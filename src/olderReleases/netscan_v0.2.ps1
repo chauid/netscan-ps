@@ -440,7 +440,7 @@ function Get-LiveNeighbor {
 
 $pingTimeoutMs = 1500
 $pingBatchSize = 64
-$sweepRounds = 5
+$sweepRounds = 3
 
 $known = @{}
 Invoke-WithSpinner -Message "ARP Scanning..." -Color Cyan -SpinnerPos 'Right' -Work {

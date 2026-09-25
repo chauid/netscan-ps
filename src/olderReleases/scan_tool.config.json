@@ -1,0 +1,12 @@
+﻿{
+    "AdapterName":  "이더넷",
+    "AdapterIP":  "192.168.123.110",
+    "Engine":  "ResolveDnsName",
+    "RescanSec":  120,
+    "FlushMin":  15,
+    "SweepAfterFlush":  3,
+    "SweepNormal":  2,
+    "PingTimeoutMs":  1500,
+    "TcpTimeoutMs":  500,
+    "UdpTimeoutMs":  1000
+}
