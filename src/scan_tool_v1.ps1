@@ -1,51 +1,52 @@
-$subnet = '172.30.1'
-$commonPorts = 21,22,23,25,53,80,88,135,139,443,445,3306,3389,5357,5432,5985,8080
+Ôªø$subnet = '172.30.1'
+$commonPorts = 21, 22, 23, 25, 53, 80, 88, 135, 139, 443, 445, 3306, 3389, 5357, 5432, 5985, 8080
 
-# ¶°¶° 1) ARP √ ±‚»≠ (∞¸∏Æ¿⁄ ±««— « ø‰, Ω«∆–«ÿµµ π´πÊ) ¶°¶°
+# ‚îÄ‚îÄ 1) ARP Ï¥àÍ∏∞Ìôî (Í¥ÄÎ¶¨Ïûê Í∂åÌïú ÌïÑÏöî, Ïã§Ìå®Ìï¥ÎèÑ Î¨¥Î∞©) ‚îÄ‚îÄ
 arp -d * 2>$null
 
-# ¶°¶° 2) ARP ¿Øµµ: ∫Òµø±‚ «Œ 254∞≥ µøΩ√ πﬂªÁ ¶°¶°
-Write-Host "ARP ¿Øµµ ¡ﬂ..." -ForegroundColor Cyan
+# ‚îÄ‚îÄ 2) ARP Ïú†ÎèÑ: ÎπÑÎèôÍ∏∞ Ìïë 254Í∞ú ÎèôÏãú Î∞úÏÇ¨ ‚îÄ‚îÄ
+Write-Host "ARP Ïú†ÎèÑ Ï§ë..." -ForegroundColor Cyan
 $tasks = 1..254 | ForEach-Object {
     (New-Object System.Net.NetworkInformation.Ping).SendPingAsync("$subnet.$_", 300)
 }
-[System.Threading.Tasks.Task]::WaitAll($tasks)   # ∏µÁ «Œ øœ∑·(∂«¥¬ ≈∏¿”æ∆øÙ)±Ó¡ˆ ¥Î±‚
-Start-Sleep -Milliseconds 200                     # ƒ≥Ω√ ¡§¬¯ ø©¿Ø
+[System.Threading.Tasks.Task]::WaitAll($tasks)   # Î™®Îì† Ìïë ÏôÑÎ£å(ÎòêÎäî ÌÉÄÏûÑÏïÑÏõÉ)ÍπåÏßÄ ÎåÄÍ∏∞
+Start-Sleep -Milliseconds 200                     # Ï∫êÏãú Ï†ïÏ∞© Ïó¨Ïú†
 
-# ¶°¶° 3) ªÏæ∆¿÷¥¬ ¿ÃøÙ √ﬂ√‚ (π›µÂΩ√ @()∑Œ πËø≠ ∞≠¡¶) ¶°¶°
+# ‚îÄ‚îÄ 3) ÏÇ¥ÏïÑÏûàÎäî Ïù¥ÏõÉ Ï∂îÏ∂ú (Î∞òÎìúÏãú @()Î°ú Î∞∞Ïó¥ Í∞ïÏ†ú) ‚îÄ‚îÄ
 $live = @(Get-NetNeighbor -AddressFamily IPv4 | Where-Object {
-    $_.IPAddress -like "$subnet.*" -and
-    $_.State -in 'Reachable','Stale','Delay','Probe' -and
-    $_.LinkLayerAddress -and
-    $_.LinkLayerAddress -notin '00-00-00-00-00-00','FF-FF-FF-FF-FF-FF'
-})
-Write-Host ("ªÏæ∆¿÷¥¬ »£Ω∫∆Æ {0}¥Î. ¿Ã∏ß/∆˜∆Æ ¡∂»∏ Ω√¿€...`n" -f $live.Count) -ForegroundColor Cyan
+        $_.IPAddress -like "$subnet.*" -and
+        $_.State -in 'Reachable', 'Stale', 'Delay', 'Probe' -and
+        $_.LinkLayerAddress -and
+        $_.LinkLayerAddress -notin '00-00-00-00-00-00', 'FF-FF-FF-FF-FF-FF'
+    })
+Write-Host ("ÏÇ¥ÏïÑÏûàÎäî Ìò∏Ïä§Ìä∏ {0}ÎåÄ. Ïù¥Î¶Ñ/Ìè¨Ìä∏ Ï°∞Ìöå ÏãúÏûë...`n" -f $live.Count) -ForegroundColor Cyan
 
-# ¡¯¥‹: ∞®¡ˆ∞° ø©¿¸»˜ ¿˚¿∏∏È æ∆∑° ¡÷ºÆ¿ª «ÆæÓ ¿¸√º ªÛ≈¬∏¶ »Æ¿Œ
+# ÏßÑÎã®: Í∞êÏßÄÍ∞Ä Ïó¨Ï†ÑÌûà Ï†ÅÏúºÎ©¥ ÏïÑÎûò Ï£ºÏÑùÏùÑ ÌíÄÏñ¥ Ï†ÑÏ≤¥ ÏÉÅÌÉúÎ•º ÌôïÏù∏
 # Get-NetNeighbor -AddressFamily IPv4 | Where-Object IPAddress -like "$subnet.*" |
 #   Select IPAddress,LinkLayerAddress,State | Sort-Object {[version]$_.IPAddress} | Format-Table -AutoSize
 
-# ¶°¶° 4) ¿Ã∏ß ¡∂»∏ + ∆˜∆Æ Ω∫ƒµ ∫¥∑ƒ Ω««‡ ¶°¶°
+# ‚îÄ‚îÄ 4) Ïù¥Î¶Ñ Ï°∞Ìöå + Ìè¨Ìä∏ Ïä§Ï∫î Î≥ëÎ†¨ Ïã§Ìñâ ‚îÄ‚îÄ
 $worker = {
     param($ip, $mac, $ports)
     $name = $null; $via = $null
 
-    # ¿Ã∏ß ¡∂»∏
-    try { $h=[System.Net.Dns]::GetHostEntry($ip); if($h.HostName){$name=$h.HostName;$via='DNS'} } catch {}
+    # Ïù¥Î¶Ñ Ï°∞Ìöå
+    try { $h = [System.Net.Dns]::GetHostEntry($ip); if ($h.HostName) { $name = $h.HostName; $via = 'DNS' } } catch {}
     if (-not $name) {
         $nb = nbtstat -A $ip 2>$null
         $line = $nb | Where-Object { $_ -match '<00>\s+UNIQUE\s+Registered' } | Select-Object -First 1
-        if ($line) { $name = ($line -replace '\s*<00>.*$','').Trim(); $via='NetBIOS' }
+        if ($line) { $name = ($line -replace '\s*<00>.*$', '').Trim(); $via = 'NetBIOS' }
     }
     if (-not $name) {
         try {
             $r = Resolve-DnsName -Name $ip -LlmnrNetbiosOnly -ErrorAction Stop
             $hit = $r | Where-Object { $_.NameHost } | Select-Object -First 1
-            if ($hit) { $name = $hit.NameHost; $via='LLMNR' }
-        } catch {}
+            if ($hit) { $name = $hit.NameHost; $via = 'LLMNR' }
+        }
+        catch {}
     }
 
-    # ∆˜∆Æ Ω∫ƒµ
+    # Ìè¨Ìä∏ Ïä§Ï∫î
     $open = foreach ($p in $ports) {
         $c = New-Object Net.Sockets.TcpClient
         try {
@@ -53,14 +54,15 @@ $worker = {
             if ($async.AsyncWaitHandle.WaitOne(250, $false) -and $c.Connected) {
                 $c.EndConnect($async); $p
             }
-        } catch {} finally { $c.Close() }
+        }
+        catch {} finally { $c.Close() }
     }
 
     [PSCustomObject]@{
-        IP=$ip; MAC=$mac
-        Name= if($name){$name}else{'(»Æ¿Œ ∫“∞°)'}
-        Method=$via
-        OpenPorts= if($open){ ($open | Sort-Object) -join ',' } else { '-' }
+        IP = $ip; MAC = $mac
+        Name = if ($name) { $name }else { '(ÌôïÏù∏ Î∂àÍ∞Ä)' }
+        Method = $via
+        OpenPorts = if ($open) { ($open | Sort-Object) -join ',' } else { '-' }
     }
 }
 
@@ -68,24 +70,25 @@ $pool = [runspacefactory]::CreateRunspacePool(1, 32); $pool.Open()
 $jobs = foreach ($n in $live) {
     $ps = [powershell]::Create(); $ps.RunspacePool = $pool
     [void]$ps.AddScript($worker).
-        AddArgument($n.IPAddress).
-        AddArgument($n.LinkLayerAddress).
-        AddArgument($commonPorts)
-    [PSCustomObject]@{ PS=$ps; Handle=$ps.BeginInvoke() }
+    AddArgument($n.IPAddress).
+    AddArgument($n.LinkLayerAddress).
+    AddArgument($commonPorts)
+    [PSCustomObject]@{ PS = $ps; Handle = $ps.BeginInvoke() }
 }
 
-# ¶°¶° 5) øœ∑·µ«¥¬ ¥Î∑Œ «— ¡Ÿæø √‚∑¬ ¶°¶°
+# ‚îÄ‚îÄ 5) ÏôÑÎ£åÎêòÎäî ÎåÄÎ°ú Ìïú Ï§ÑÏî© Ï∂úÎ†• ‚îÄ‚îÄ
 $results = New-Object System.Collections.ArrayList
 $pending = [System.Collections.ArrayList]@($jobs)
 while ($pending.Count -gt 0) {
-    for ($i=$pending.Count-1; $i -ge 0; $i--) {
+    for ($i = $pending.Count - 1; $i -ge 0; $i--) {
         if ($pending[$i].Handle.IsCompleted) {
             $r = $pending[$i].PS.EndInvoke($pending[$i].Handle) | Select-Object -First 1
             $pending[$i].PS.Dispose(); [void]$pending.RemoveAt($i); [void]$results.Add($r)
             if ($r.Method) {
-                Write-Host ("[{0,-13}] {1,-18} ∆˜∆Æ: {2}" -f $r.IP, $r.Name, $r.OpenPorts) -ForegroundColor Green
-            } else {
-                Write-Host ("[{0,-13}] {1,-18} ∆˜∆Æ: {2}" -f $r.IP, '»Æ¿Œ ∫“∞°', $r.OpenPorts) -ForegroundColor DarkGray
+                Write-Host ("[{0,-13}] {1,-18} Ìè¨Ìä∏: {2}" -f $r.IP, $r.Name, $r.OpenPorts) -ForegroundColor Green
+            }
+            else {
+                Write-Host ("[{0,-13}] {1,-18} Ìè¨Ìä∏: {2}" -f $r.IP, 'ÌôïÏù∏ Î∂àÍ∞Ä', $r.OpenPorts) -ForegroundColor DarkGray
             }
         }
     }
@@ -93,5 +96,5 @@ while ($pending.Count -gt 0) {
 }
 $pool.Close(); $pool.Dispose()
 
-Write-Host "`n=== √÷¡æ ∞·∞˙ ===" -ForegroundColor Cyan
+Write-Host "`n=== ÏµúÏ¢Ö Í≤∞Í≥º ===" -ForegroundColor Cyan
 $results | Sort-Object { [version]($_.IP) } | Format-Table IP, Name, Method, OpenPorts, MAC -AutoSize

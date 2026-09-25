@@ -1,20 +1,20 @@
-<#
-    ³×Æ®¿öÅ© ½ºÄ³³Ê - ¾î´ğÅÍ ¼±ÅÃÇü
-    - ¿¬°áµÈ ³×Æ®¿öÅ© ¾î´ğÅÍ¿Í °¢ IPv4 ´ë¿ªÀ» ¾î´ğÅÍº°·Î ±×·ìÈ­ÇÏ¿© Ç¥½Ã
-    - ¹æÇâÅ°(¡è/¡é)·Î ½ºÄµÇÒ ´ë¿ªÀ» ¼±ÅÃ (Enter È®Á¤, Esc Ãë¼Ò)
-    - ¼±ÅÃÇÑ ´ë¿ªÀÇ ½ÇÁ¦ PrefixLength ±âÁØÀ¸·Î ÀüÃ¼ È£½ºÆ® ´ë¿ªÀ» ½ºÄµ
-    - ÀÌ¸§ Á¶È¸´Â Resolve-DnsNameÀ¸·Î ÅëÀÏ (DNS ¡æ LLMNR ¡æ NetBIOS ¼ø, ÇÁ·ÎÅäÄİº° ºĞ¸®)
-    - ARP À¯µµ¸¦ 3È¸Â÷ ¹İº¹ÇÏ°í °á°ú¸¦ ÇÕÁıÇÕÇÏ¿© °¨Áö ¾ÈÁ¤¼º È®º¸
-    ÁÖÀÇ: °ü¸®ÀÚ ±ÇÇÑÀÌ ÇÊ¿äÇÏ¸ç, ºÎÁ·ÇÏ¸é ½Â°İµÈ Ã¢À¸·Î ÀÚµ¿ Àç½ÇÇàµË´Ï´Ù.
-          ¹æÇâÅ° UI´Â ½ÇÁ¦ ÄÜ¼Ö(Windows Terminal, conhost, pwsh)¿¡¼­ µ¿ÀÛÇÕ´Ï´Ù.
-          PowerShell ISE¿¡¼­´Â ¹øÈ£ ÀÔ·Â ¹æ½ÄÀ¸·Î ÀÚµ¿ ÀüÈ¯µË´Ï´Ù.
+ï»¿<#
+    ë„¤íŠ¸ì›Œí¬ ìŠ¤ìºë„ˆ - ì–´ëŒ‘í„° ì„ íƒí˜•
+    - ì—°ê²°ëœ ë„¤íŠ¸ì›Œí¬ ì–´ëŒ‘í„°ì™€ ê° IPv4 ëŒ€ì—­ì„ ì–´ëŒ‘í„°ë³„ë¡œ ê·¸ë£¹í™”í•˜ì—¬ í‘œì‹œ
+    - ë°©í–¥í‚¤(â†‘/â†“)ë¡œ ìŠ¤ìº”í•  ëŒ€ì—­ì„ ì„ íƒ (Enter í™•ì •, Esc ì·¨ì†Œ)
+    - ì„ íƒí•œ ëŒ€ì—­ì˜ ì‹¤ì œ PrefixLength ê¸°ì¤€ìœ¼ë¡œ ì „ì²´ í˜¸ìŠ¤íŠ¸ ëŒ€ì—­ì„ ìŠ¤ìº”
+    - ì´ë¦„ ì¡°íšŒëŠ” Resolve-DnsNameìœ¼ë¡œ í†µì¼ (DNS â†’ LLMNR â†’ NetBIOS ìˆœ, í”„ë¡œí† ì½œë³„ ë¶„ë¦¬)
+    - ARP ìœ ë„ë¥¼ 3íšŒì°¨ ë°˜ë³µí•˜ê³  ê²°ê³¼ë¥¼ í•©ì§‘í•©í•˜ì—¬ ê°ì§€ ì•ˆì •ì„± í™•ë³´
+    ì£¼ì˜: ê´€ë¦¬ì ê¶Œí•œì´ í•„ìš”í•˜ë©°, ë¶€ì¡±í•˜ë©´ ìŠ¹ê²©ëœ ì°½ìœ¼ë¡œ ìë™ ì¬ì‹¤í–‰ë©ë‹ˆë‹¤.
+          ë°©í–¥í‚¤ UIëŠ” ì‹¤ì œ ì½˜ì†”(Windows Terminal, conhost, pwsh)ì—ì„œ ë™ì‘í•©ë‹ˆë‹¤.
+          PowerShell ISEì—ì„œëŠ” ë²ˆí˜¸ ì…ë ¥ ë°©ì‹ìœ¼ë¡œ ìë™ ì „í™˜ë©ë‹ˆë‹¤.
 #>
 
 $tcpPorts = 20, 21, 22, 23, 25, 53, 79, 80, 88, 110, 111, 119, 135, 139, 143, 179, 194, 389, 443, 445, 465, 515, 587, 631, 636, 993, 995, 1080, 1433, 1521, 1723, 1883, 2049, 2181, 2375, 2376, 3000, 3128, 3268, 3306, 3389, 4369, 4444, 5000, 5060, 5061, 5222, 5432, 5601, 5672, 5900, 5984, 6379, 6443, 8000, 8009, 8080, 8081, 8086, 8088, 8443, 8888, 9000, 9042, 9092, 9200, 9300, 9418, 9999
 # $udpPorts = 53, 67, 68, 69, 111, 123, 137, 138, 161, 162, 500, 514, 520, 546, 547, 1194, 2049, 5060
 
-# -- 0) °ü¸®ÀÚ ±ÇÇÑ È®ÀÎ ¹× ½Â°İ --
-# arp -d * °¡ ¸Å ½ÇÇà¸¶´Ù µ¿ÀÏÇÏ°Ô ¼º°øÇØ¾ß °á°ú ÀçÇö¼ºÀÌ º¸ÀåµÇ¹Ç·Î °ü¸®ÀÚ ±ÇÇÑÀ» °­Á¦ÇÕ´Ï´Ù.
+# -- 0) ê´€ë¦¬ì ê¶Œí•œ í™•ì¸ ë° ìŠ¹ê²© --
+# arp -d * ê°€ ë§¤ ì‹¤í–‰ë§ˆë‹¤ ë™ì¼í•˜ê²Œ ì„±ê³µí•´ì•¼ ê²°ê³¼ ì¬í˜„ì„±ì´ ë³´ì¥ë˜ë¯€ë¡œ ê´€ë¦¬ì ê¶Œí•œì„ ê°•ì œí•©ë‹ˆë‹¤.
 function Test-Administrator {
     $identity = [System.Security.Principal.WindowsIdentity]::GetCurrent()
     $principal = New-Object System.Security.Principal.WindowsPrincipal($identity)
@@ -23,26 +23,26 @@ function Test-Administrator {
 
 if (-not (Test-Administrator)) {
     if ([string]::IsNullOrWhiteSpace($PSCommandPath)) {
-        Write-Host 'ÀÌ ½ºÅ©¸³Æ®´Â °ü¸®ÀÚ ±ÇÇÑÀÌ ÇÊ¿äÇÕ´Ï´Ù.' -ForegroundColor Red
-        Write-Host 'ÄÜ¼Ö¿¡ Á÷Á¢ ºÙ¿©³ÖÀº °æ¿ì ÀÚµ¿ ½Â°İÀÌ ºÒ°¡ÇÏ¹Ç·Î, °ü¸®ÀÚ ±ÇÇÑ PowerShell¿¡¼­ ´Ù½Ã ½ÇÇàÇÏ½Ê½Ã¿À.' -ForegroundColor Yellow
+        Write-Host 'ì´ ìŠ¤í¬ë¦½íŠ¸ëŠ” ê´€ë¦¬ì ê¶Œí•œì´ í•„ìš”í•©ë‹ˆë‹¤.' -ForegroundColor Red
+        Write-Host 'ì½˜ì†”ì— ì§ì ‘ ë¶™ì—¬ë„£ì€ ê²½ìš° ìë™ ìŠ¹ê²©ì´ ë¶ˆê°€í•˜ë¯€ë¡œ, ê´€ë¦¬ì ê¶Œí•œ PowerShellì—ì„œ ë‹¤ì‹œ ì‹¤í–‰í•˜ì‹­ì‹œì˜¤.' -ForegroundColor Yellow
         return
     }
 
-    Write-Host '°ü¸®ÀÚ ±ÇÇÑÀÌ ÇÊ¿äÇÕ´Ï´Ù. ½Â°İµÈ Ã¢À¸·Î ´Ù½Ã ½ÇÇàÇÕ´Ï´Ù...' -ForegroundColor Yellow
-    $exe = (Get-Process -Id $PID).Path       # powershell.exe ¶Ç´Â pwsh.exe
+    Write-Host 'ê´€ë¦¬ì ê¶Œí•œì´ í•„ìš”í•©ë‹ˆë‹¤. ìŠ¹ê²©ëœ ì°½ìœ¼ë¡œ ë‹¤ì‹œ ì‹¤í–‰í•©ë‹ˆë‹¤...' -ForegroundColor Yellow
+    $exe = (Get-Process -Id $PID).Path       # powershell.exe ë˜ëŠ” pwsh.exe
     $startArgs = @('-NoExit', '-ExecutionPolicy', 'Bypass', '-File', $PSCommandPath)
     try {
         Start-Process -FilePath $exe -Verb RunAs -ArgumentList $startArgs -ErrorAction Stop
     }
     catch {
-        Write-Host '±ÇÇÑ ½Â°İÀÌ Ãë¼ÒµÇ¾ú°Å³ª ½ÇÆĞÇß½À´Ï´Ù.' -ForegroundColor Red
+        Write-Host 'ê¶Œí•œ ìŠ¹ê²©ì´ ì·¨ì†Œë˜ì—ˆê±°ë‚˜ ì‹¤íŒ¨í–ˆìŠµë‹ˆë‹¤.' -ForegroundColor Red
     }
     return
 }
 
-# -- ½ºÇÇ³Ê »óÅÂ °»½Å --
+# -- ìŠ¤í”¼ë„ˆ ìƒíƒœ ê°±ì‹  --
 function Set-SpinnerStatus {
-    <# ½ºÇÇ³Ê ¿À¸¥ÂÊ¿¡ Ç¥½ÃµÇ´Â ºÎ°¡ ¹®±¸¸¦ °»½ÅÇÕ´Ï´Ù. #>
+    <# ìŠ¤í”¼ë„ˆ ì˜¤ë¥¸ìª½ì— í‘œì‹œë˜ëŠ” ë¶€ê°€ ë¬¸êµ¬ë¥¼ ê°±ì‹ í•©ë‹ˆë‹¤. #>
     param(
         [Parameter(Mandatory)][hashtable] $State,
         [Parameter(Mandatory)][string]    $Status
@@ -50,9 +50,9 @@ function Set-SpinnerStatus {
     $State.Status = $Status
 }
 
-# -- ½ºÇÇ³Ê °ü·Ã À¯Æ¿ --
+# -- ìŠ¤í”¼ë„ˆ ê´€ë ¨ ìœ í‹¸ --
 function Set-SpinnerDetail {
-    <# ½ºÇÇ³Ê ¹Ù·Î ¾Æ·¡ ÁÙÀ» Á¦ÀÚ¸®¿¡¼­ °»½ÅÇÕ´Ï´Ù(ÁÙ¹Ù²Ş ¾øÀ½). #>
+    <# ìŠ¤í”¼ë„ˆ ë°”ë¡œ ì•„ë˜ ì¤„ì„ ì œìë¦¬ì—ì„œ ê°±ì‹ í•©ë‹ˆë‹¤(ì¤„ë°”ê¿ˆ ì—†ìŒ). #>
     param(
         [Parameter(Mandatory)][hashtable] $State,
         [string]                          $Text = '',
@@ -62,9 +62,9 @@ function Set-SpinnerDetail {
     $State.DetailColor = $Color
 }
 
-# -- ½ºÇÇ³Ê ÇÑ ÁÙ Ãâ·Â --
+# -- ìŠ¤í”¼ë„ˆ í•œ ì¤„ ì¶œë ¥ --
 function Write-SpinnerLine {
-    <# ½ºÇÇ³Ê ¿µ¿ª À§ÂÊ¿¡ ¿µ±¸ÀûÀÎ ÇÑ ÁÙÀ» ³²±â°í ¿µ¿ªÀ» ¾Æ·¡·Î Àç¹èÄ¡ÇÕ´Ï´Ù. #>
+    <# ìŠ¤í”¼ë„ˆ ì˜ì—­ ìœ„ìª½ì— ì˜êµ¬ì ì¸ í•œ ì¤„ì„ ë‚¨ê¸°ê³  ì˜ì—­ì„ ì•„ë˜ë¡œ ì¬ë°°ì¹˜í•©ë‹ˆë‹¤. #>
     param(
         [Parameter(Mandatory)][hashtable] $State,
         [Parameter(Mandatory)][string]    $Text,
@@ -83,7 +83,7 @@ function Write-SpinnerLine {
         [Console]::WriteLine($Text)
         [Console]::ForegroundColor = $prev
 
-        [Console]::Write("`n")                      # »ó¼¼ ÁÙ ÀÚ¸® ÀçÈ®º¸
+        [Console]::Write("`n")                      # ìƒì„¸ ì¤„ ìë¦¬ ì¬í™•ë³´
         $State.Top = [Console]::CursorTop - 1
         $State.LastLen = 0
         $State.LastDetailLen = 0
@@ -91,7 +91,7 @@ function Write-SpinnerLine {
     finally { [System.Threading.Monitor]::Exit($State.Lock) }
 }
 
-# -- ½ºÇÇ³Ê ½ÇÇà --
+# -- ìŠ¤í”¼ë„ˆ ì‹¤í–‰ --
 function Invoke-WithSpinner {
     param(
         [Parameter(Mandatory)][scriptblock] $Work,
@@ -161,7 +161,7 @@ function Invoke-WithSpinner {
         }
     }
 
-    [Console]::Write("`n")                          # »ó¼¼ ÁÙ ÀÚ¸® È®º¸
+    [Console]::Write("`n")                          # ìƒì„¸ ì¤„ ìë¦¬ í™•ë³´
     $state.Top = [Console]::CursorTop - 1
 
     $runspace = [runspacefactory]::CreateRunspace()
@@ -191,9 +191,9 @@ function Invoke-WithSpinner {
     }
 }
 
-# -- IP <-> Á¤¼ö º¯È¯ À¯Æ¿ --
-# ÁÖÀÇ: Windows PowerShell 5.1Àº 0xFFFFFFFF¸¦ Int32(-1)·Î ÇØ¼®ÇÏ¹Ç·Î
-#       16Áø ¸®ÅÍ·² ´ë½Å 10Áø »ó¼ö¸¦ »ç¿ëÇÕ´Ï´Ù.
+# -- IP <-> ì •ìˆ˜ ë³€í™˜ ìœ í‹¸ --
+# ì£¼ì˜: Windows PowerShell 5.1ì€ 0xFFFFFFFFë¥¼ Int32(-1)ë¡œ í•´ì„í•˜ë¯€ë¡œ
+#       16ì§„ ë¦¬í„°ëŸ´ ëŒ€ì‹  10ì§„ ìƒìˆ˜ë¥¼ ì‚¬ìš©í•©ë‹ˆë‹¤.
 $script:UINT32_MAX = [uint64]4294967295
 
 function ConvertTo-IPUInt {
@@ -211,7 +211,7 @@ function ConvertFrom-IPUInt {
     ([System.Net.IPAddress]::new($bytes)).ToString()
 }
 
-# -- PrefixLength ±â¹İ ´ë¿ª(³×Æ®¿öÅ©/ºê·ÎµåÄ³½ºÆ®/È£½ºÆ® ¹üÀ§) °è»ê --
+# -- PrefixLength ê¸°ë°˜ ëŒ€ì—­(ë„¤íŠ¸ì›Œí¬/ë¸Œë¡œë“œìºìŠ¤íŠ¸/í˜¸ìŠ¤íŠ¸ ë²”ìœ„) ê³„ì‚° --
 function Get-ScanRange {
     param(
         [Parameter(Mandatory)][string] $IPAddress,
@@ -244,11 +244,11 @@ function Get-ScanRange {
     }
 }
 
-# -- ¹æÇâÅ° ¸Ş´º (Çì´õ´Â °Ç³Ê¶Ù°í ¼±ÅÃ °¡´ÉÇÑ Ç×¸ñ¸¸ ¼øÈ¸) --
+# -- ë°©í–¥í‚¤ ë©”ë‰´ (í—¤ë”ëŠ” ê±´ë„ˆë›°ê³  ì„ íƒ ê°€ëŠ¥í•œ í•­ëª©ë§Œ ìˆœíšŒ) --
 function Read-MenuSelection {
     param(
         [Parameter(Mandatory)] $Items,
-        [string] $Title = '½ºÄµÇÒ ´ë¿ªÀ» ¼±ÅÃÇÏ¼¼¿ä  (¡è/¡é ÀÌµ¿, Enter ¼±ÅÃ, Esc Ãë¼Ò)'
+        [string] $Title = 'ìŠ¤ìº”í•  ëŒ€ì—­ì„ ì„ íƒí•˜ì„¸ìš”  (â†‘/â†“ ì´ë™, Enter ì„ íƒ, Esc ì·¨ì†Œ)'
     )
 
     $selectable = @()
@@ -271,7 +271,7 @@ function Read-MenuSelection {
                     Write-Host $item.Display -ForegroundColor Yellow
                 }
                 elseif ($selectable[$cursor] -eq $i) {
-                    Write-Host ('  ¢º ' + $item.Display) -ForegroundColor Black -BackgroundColor Cyan
+                    Write-Host ('  â–¶ ' + $item.Display) -ForegroundColor Black -BackgroundColor Cyan
                 }
                 else {
                     Write-Host ('    ' + $item.Display) -ForegroundColor Gray
@@ -293,7 +293,7 @@ function Read-MenuSelection {
     }
 }
 
-# -- ISE µî ReadKey ¹ÌÁö¿ø È¯°æ¿ë ¹øÈ£ ÀÔ·Â ´ëÃ¼ --
+# -- ISE ë“± ReadKey ë¯¸ì§€ì› í™˜ê²½ìš© ë²ˆí˜¸ ì…ë ¥ ëŒ€ì²´ --
 function Read-MenuSelectionFallback {
     param([Parameter(Mandatory)] $Items)
     $map = @{}
@@ -309,15 +309,15 @@ function Read-MenuSelectionFallback {
         }
     }
     if ($n -eq 0) { return $null }
-    $sel = Read-Host "`n¹øÈ£ ÀÔ·Â (Ãë¼Ò: Enter)"
+    $sel = Read-Host "`në²ˆí˜¸ ì…ë ¥ (ì·¨ì†Œ: Enter)"
     if ([string]::IsNullOrWhiteSpace($sel)) { return $null }
     $idx = 0
     if ([int]::TryParse($sel, [ref]$idx) -and $map.ContainsKey($idx)) { return $map[$idx] }
-    Write-Host 'Àß¸øµÈ ÀÔ·ÂÀÔ´Ï´Ù.' -ForegroundColor Red
+    Write-Host 'ì˜ëª»ëœ ì…ë ¥ì…ë‹ˆë‹¤.' -ForegroundColor Red
     return $null
 }
 
-# -- 1) ¾î´ğÅÍ + IPv4 ¸ñ·ÏÀ» ±×·ìÈ­ÇÏ¿© ¸Ş´º Ç×¸ñ ±¸¼º --
+# -- 1) ì–´ëŒ‘í„° + IPv4 ëª©ë¡ì„ ê·¸ë£¹í™”í•˜ì—¬ ë©”ë‰´ í•­ëª© êµ¬ì„± --
 $adapters = Get-NetAdapter | Sort-Object ifIndex
 $ipv4All = Get-NetIPAddress -AddressFamily IPv4
 
@@ -325,15 +325,15 @@ $items = New-Object System.Collections.Generic.List[object]
 foreach ($ad in $adapters) {
     $items.Add([PSCustomObject]@{
             IsHeader = $true
-            Display  = ('¡á {0}  [{1}]  {2}' -f $ad.Name, $ad.Status, $ad.InterfaceDescription)
+            Display  = ('â–  {0}  [{1}]  {2}' -f $ad.Name, $ad.Status, $ad.InterfaceDescription)
             Value    = $null
         })
 
     $addrs = @($ipv4All | Where-Object { $_.InterfaceIndex -eq $ad.ifIndex })
     if ($addrs.Count -eq 0) {
         $items.Add([PSCustomObject]@{
-                IsHeader = $true     # ¼±ÅÃ ºÒ°¡ ¾È³» ¡æ Çì´õ·Î Ã³¸®ÇÏ¿© Ä¿¼­°¡ °Ç³Ê¶Ü
-                Display  = '      (IPv4 ÁÖ¼Ò ¾øÀ½)'
+                IsHeader = $true     # ì„ íƒ ë¶ˆê°€ ì•ˆë‚´ â†’ í—¤ë”ë¡œ ì²˜ë¦¬í•˜ì—¬ ì»¤ì„œê°€ ê±´ë„ˆëœ€
+                Display  = '      (IPv4 ì£¼ì†Œ ì—†ìŒ)'
                 Value    = $null
             })
         continue
@@ -341,7 +341,7 @@ foreach ($ad in $adapters) {
 
     foreach ($a in $addrs) {
         $range = Get-ScanRange -IPAddress $a.IPAddress -PrefixLength $a.PrefixLength
-        $display = ('{0}/{1}   ¡æ  {2} ~ {3}  ({4} hosts)' -f `
+        $display = ('{0}/{1}   â†’  {2} ~ {3}  ({4} hosts)' -f `
                 $a.IPAddress, $a.PrefixLength,
             (ConvertFrom-IPUInt $range.FirstHost),
             (ConvertFrom-IPUInt $range.LastHost),
@@ -359,37 +359,37 @@ foreach ($ad in $adapters) {
     }
 }
 
-# -- 2) ¼±ÅÃ --
+# -- 2) ì„ íƒ --
 if ($Host.Name -match 'ISE') {
     $selected = Read-MenuSelectionFallback -Items $items
 }
 else {
     $selected = Read-MenuSelection -Items $items
 }
-if (-not $selected) { Write-Host '¼±ÅÃÀÌ Ãë¼ÒµÇ¾ú½À´Ï´Ù.' -ForegroundColor Yellow; return }
+if (-not $selected) { Write-Host 'ì„ íƒì´ ì·¨ì†Œë˜ì—ˆìŠµë‹ˆë‹¤.' -ForegroundColor Yellow; return }
 
 $range = $selected.Value.Range
 Clear-Host
-Write-Host ('¼±ÅÃ: {0}  |  {1}/{2}' -f $selected.Value.AdapterName, $selected.Value.IPAddress, $selected.Value.Prefix) -ForegroundColor Cyan
-Write-Host ("½ºÄµ ´ë¿ª: {0} ~ {1}  ({2} hosts)`n" -f (ConvertFrom-IPUInt $range.FirstHost), (ConvertFrom-IPUInt $range.LastHost), $range.HostCount) -ForegroundColor Cyan
+Write-Host ('ì„ íƒ: {0}  |  {1}/{2}' -f $selected.Value.AdapterName, $selected.Value.IPAddress, $selected.Value.Prefix) -ForegroundColor Cyan
+Write-Host ("ìŠ¤ìº” ëŒ€ì—­: {0} ~ {1}  ({2} hosts)`n" -f (ConvertFrom-IPUInt $range.FirstHost), (ConvertFrom-IPUInt $range.LastHost), $range.HostCount) -ForegroundColor Cyan
 
 if ($range.HostCount -gt 1024) {
-    Write-Host ('°æ°í: È£½ºÆ® ¼ö°¡ {0}°³·Î ¸¹¾Æ ½ºÄµ¿¡ ½Ã°£ÀÌ ¿À·¡ °É¸± ¼ö ÀÖ½À´Ï´Ù.' -f $range.HostCount) -ForegroundColor Yellow
-    $ans = Read-Host '°è¼ÓÇÏ½Ã°Ú½À´Ï±î? (Y/N)'
-    if ($ans -notin 'Y', 'y') { Write-Host 'Ãë¼ÒµÇ¾ú½À´Ï´Ù.'; return }
+    Write-Host ('ê²½ê³ : í˜¸ìŠ¤íŠ¸ ìˆ˜ê°€ {0}ê°œë¡œ ë§ì•„ ìŠ¤ìº”ì— ì‹œê°„ì´ ì˜¤ë˜ ê±¸ë¦´ ìˆ˜ ìˆìŠµë‹ˆë‹¤.' -f $range.HostCount) -ForegroundColor Yellow
+    $ans = Read-Host 'ê³„ì†í•˜ì‹œê² ìŠµë‹ˆê¹Œ? (Y/N)'
+    if ($ans -notin 'Y', 'y') { Write-Host 'ì·¨ì†Œë˜ì—ˆìŠµë‹ˆë‹¤.'; return }
 }
 
-# -- 3) ARP Table ÃÊ±âÈ­ (°ü¸®ÀÚ ±ÇÇÑ È®º¸ ÈÄÀÌ¹Ç·Î ¼º°ø ÀüÁ¦) --
+# -- 3) ARP Table ì´ˆê¸°í™” (ê´€ë¦¬ì ê¶Œí•œ í™•ë³´ í›„ì´ë¯€ë¡œ ì„±ê³µ ì „ì œ) --
 Invoke-WithSpinner -Message "Clearing ARP Cache..." -Color Cyan -SpinnerPos 'Right' -Work {
     arp -d * 2>$null | Out-Null
 }
 Write-Host "ARP Cache Cleared.`n" -ForegroundColor Cyan
 
-# -- 4) ARP ½ºÀ¬: ´ÙÈ¸Â÷ ½ºÀ¬ ÈÄ °á°ú ÇÕÁıÇÕ --
+# -- 4) ARP ìŠ¤ìœ•: ë‹¤íšŒì°¨ ìŠ¤ìœ• í›„ ê²°ê³¼ í•©ì§‘í•© --
 $netStart = ConvertTo-IPUInt $range.Network
 $netEnd = ConvertTo-IPUInt $range.Broadcast
 
-# È¸Â÷º° ÇÎ ½ºÀ¬ (ÀÌ¹Ì È®ÀÎµÈ IP´Â °Ç³Ê¶Ü)
+# íšŒì°¨ë³„ í•‘ ìŠ¤ìœ• (ì´ë¯¸ í™•ì¸ëœ IPëŠ” ê±´ë„ˆëœ€)
 function Invoke-PingSweep {
     param(
         [Parameter(Mandatory)][uint64]    $First,
@@ -416,14 +416,14 @@ function Invoke-PingSweep {
             }
         }
         finally {
-            foreach ($ping in $pings) { $ping.Dispose() }   # ¹İµå½Ã WaitAll ÀÌÈÄ
+            foreach ($ping in $pings) { $ping.Dispose() }   # ë°˜ë“œì‹œ WaitAll ì´í›„
         }
-        Start-Sleep -Milliseconds 50   # ¹èÄ¡ °£ °£°İ: ºê·ÎµåÄ³½ºÆ® ÆøÁÖ ¿ÏÈ­
+        Start-Sleep -Milliseconds 50   # ë°°ì¹˜ ê°„ ê°„ê²©: ë¸Œë¡œë“œìºìŠ¤íŠ¸ í­ì£¼ ì™„í™”
         $cur = $end + 1
     }
 }
 
-# ÇöÀç ARP Ä³½Ã¿¡¼­ ¼±ÅÃ ´ë¿ªÀÇ À¯È¿ ÀÌ¿ô¸¸ ÃßÃâ
+# í˜„ì¬ ARP ìºì‹œì—ì„œ ì„ íƒ ëŒ€ì—­ì˜ ìœ íš¨ ì´ì›ƒë§Œ ì¶”ì¶œ
 function Get-LiveNeighbor {
     param(
         [Parameter(Mandatory)][uint64] $NetStart,
@@ -449,7 +449,7 @@ Invoke-WithSpinner -Message "ARP Scanning..." -Color Cyan -SpinnerPos 'Right' -W
     for ($round = 1; $round -le $sweepRounds; $round++) {
         Invoke-PingSweep -First $range.FirstHost -Last $range.LastHost `
             -TimeoutMs $pingTimeoutMs -BatchSize $pingBatchSize -Known $known
-        Start-Sleep -Milliseconds 500   # Áö¿¬ ÀÀ´äÀÌ Ä³½Ã¿¡ ¹İ¿µµÉ ¿©À¯
+        Start-Sleep -Milliseconds 500   # ì§€ì—° ì‘ë‹µì´ ìºì‹œì— ë°˜ì˜ë  ì—¬ìœ 
 
         foreach ($n in (Get-LiveNeighbor -NetStart $netStart -NetEnd $netEnd)) {
             if (-not $known.ContainsKey($n.IPAddress)) {
@@ -461,13 +461,13 @@ Invoke-WithSpinner -Message "ARP Scanning..." -Color Cyan -SpinnerPos 'Right' -W
 }
 Write-Host ("ARP Scanning Complete.`n") -ForegroundColor Cyan
 
-# -- 5) ÇÕÁıÇÕ °á°ú È®Á¤ --
+# -- 5) í•©ì§‘í•© ê²°ê³¼ í™•ì • --
 $live = @($known.Values)
 
-# -- 6) ÀÌ¸§ Á¶È¸ + Æ÷Æ® ½ºÄµ ¿öÄ¿ --
+# -- 6) ì´ë¦„ ì¡°íšŒ + í¬íŠ¸ ìŠ¤ìº” ì›Œì»¤ --
 $worker = {
     param($ip, $mac, $ports)
-    # -- ÀÀ´ä ·¹ÄÚµå¿¡¼­ È£½ºÆ®¸í ÃßÃâ --
+    # -- ì‘ë‹µ ë ˆì½”ë“œì—ì„œ í˜¸ìŠ¤íŠ¸ëª… ì¶”ì¶œ --
     function Get-RecordHostName {
         param($Records)
         foreach ($rec in $Records) {
@@ -483,7 +483,7 @@ $worker = {
         return $null
     }
 
-    # -- ÇÁ·ÎÅäÄİº° ¿ª¹æÇâ Á¶È¸ (DNS ¡æ LLMNR ¡æ NetBIOS ¼ø) --
+    # -- í”„ë¡œí† ì½œë³„ ì—­ë°©í–¥ ì¡°íšŒ (DNS â†’ LLMNR â†’ NetBIOS ìˆœ) --
     function Resolve-TargetName {
         param([string] $Address)
 
@@ -509,12 +509,12 @@ $worker = {
         return $null
     }
 
-    # ÀÌ¸§ Á¶È¸
+    # ì´ë¦„ ì¡°íšŒ
     $name = $null; $via = $null
     $resolved = Resolve-TargetName -Address $ip
     if ($resolved) { $name = $resolved.Name; $via = $resolved.Method }
 
-    # Æ÷Æ® ½ºÄµ
+    # í¬íŠ¸ ìŠ¤ìº”
     $open = foreach ($p in $ports) {
         $c = New-Object Net.Sockets.TcpClient
         try {
@@ -537,7 +537,7 @@ $worker = {
 $results = New-Object System.Collections.ArrayList
 Invoke-WithSpinner -Message ("Detected {0} hosts. Host/Port Scanning..." -f $live.Count) -Color Cyan -SpinnerPos 'Right' -Work {
     param($state)
-    # -- 7) ·±½ºÆäÀÌ½º Ç® º´·Ä ½ÇÇà --
+    # -- 7) ëŸ°ìŠ¤í˜ì´ìŠ¤ í’€ ë³‘ë ¬ ì‹¤í–‰ --
     $iss = [System.Management.Automation.Runspaces.InitialSessionState]::CreateDefault()
     $iss.ImportPSModule('DnsClient')
     $pool = [runspacefactory]::CreateRunspacePool(1, 32, $iss, $Host); $pool.Open()
@@ -550,7 +550,7 @@ Invoke-WithSpinner -Message ("Detected {0} hosts. Host/Port Scanning..." -f $liv
         [PSCustomObject]@{ PS = $ps; Handle = $ps.BeginInvoke() }
     }
     
-    # -- 8) ¿Ï·áµÇ´Â ´ë·Î ÇÑ ÁÙ¾¿ Ãâ·Â --
+    # -- 8) ì™„ë£Œë˜ëŠ” ëŒ€ë¡œ í•œ ì¤„ì”© ì¶œë ¥ --
     $pending = [System.Collections.ArrayList]@($jobs)
     while ($pending.Count -gt 0) {
         for ($i = $pending.Count - 1; $i -ge 0; $i--) {
@@ -559,10 +559,10 @@ Invoke-WithSpinner -Message ("Detected {0} hosts. Host/Port Scanning..." -f $liv
                 $pending[$i].PS.Dispose(); [void]$pending.RemoveAt($i); [void]$results.Add($r)
                 Set-SpinnerStatus -State $state -Status ("Scanned: {0}/{1}" -f ($results.Count), $live.Count)
                 if ($r.Method) {
-                    Write-SpinnerLine -State $state -Text ("[{0,-15}] {1,-18} Æ÷Æ®: {2}" -f $r.IP, $r.Name, $r.OpenPorts)
+                    Write-SpinnerLine -State $state -Text ("[{0,-15}] {1,-18} í¬íŠ¸: {2}" -f $r.IP, $r.Name, $r.OpenPorts)
                 }
                 else {
-                    Write-SpinnerLine -State $state -Text ("[{0,-15}] {1,-18} Æ÷Æ®: {2}" -f $r.IP, 'Unknown', $r.OpenPorts)
+                    Write-SpinnerLine -State $state -Text ("[{0,-15}] {1,-18} í¬íŠ¸: {2}" -f $r.IP, 'Unknown', $r.OpenPorts)
                 }
             }
         }
@@ -571,5 +571,5 @@ Invoke-WithSpinner -Message ("Detected {0} hosts. Host/Port Scanning..." -f $liv
     $pool.Close(); $pool.Dispose()
 }
 
-Write-Host "`n=== ÃÖÁ¾ °á°ú ===" -ForegroundColor Cyan
+Write-Host "`n=== ìµœì¢… ê²°ê³¼ ===" -ForegroundColor Cyan
 $results | Sort-Object { [version]($_.IP) } | Format-Table IP, Name, Method, OpenPorts, MAC -AutoSize
