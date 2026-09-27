@@ -1,5 +1,5 @@
 ﻿<#
-    NetScan v4 - 실시간 네트워크 스캐너 (대시보드형)
+    NetScan v0.3 - 실시간 네트워크 스캐너 (대시보드형)
     ------------------------------------------------------------
     - 선택한 어댑터/대역을 주기적으로 반복 스캔하여 htop 형태로 실시간 표시
     - ARP flush 는 지정한 간격(기본 10분)이 되었을 때만 수행
@@ -7,21 +7,10 @@
     - 이름 조회는 DNS / LLMNR / NetBIOS / mDNS 4종을 모두 검사
         · 조회 엔진: Resolve-DnsName(기본) 또는 raw UDP (설정에서 선택)
         · mDNS 는 엔진과 무관하게 항상 raw UDP
-        · LLMNR 이름도 엔진과 무관하게 raw UDP 로만 조회 (Resolve-DnsName -LlmnrOnly 미사용)
-          - 이 cmdlet 은 멀티캐스트 조회로 LLMNR 과 mDNS 를 함께 보내므로,
-            mDNS 응답(xxx.local)이 LLMNR 이름으로 잘못 표기되는 문제가 있었다.
     - UDP 포트(53/137/5355/5353) 개방 여부는 항상 raw UDP 프로브로 판정
     - MAC 제조사는 같은 폴더의 oui.txt 로 조회 (OUI|약칭|정식명)
     - 설정값은 scan_tool.config.json 에 저장되어 다음 실행 때 복원
     - 키보드 전용 UI (마우스 이벤트 없음)
-    - [F3] 검색 : IP / 이름 / MAC / 제조사 / TCP 포트(번호·서비스명) 로 일치 호스트에 커서 이동
-        · 입력 즉시 이동(incremental), F3·↓ 다음 / Shift+F3·↑ 이전, Enter 확정, Esc 취소
-        · 다음/이전 이동은 검색 모드에서만 동작 (대시보드에서는 F3 = 검색 모드 진입만)
-        · 필터가 걸려 있으면 필터 결과 안에서만 검색
-    - [F4] 필터 : 검색과 같은 대상·규칙으로 일치하는 호스트만 목록에 표시
-        · 입력 즉시 목록 반영(incremental), ↑↓ 이동, Enter 적용(빈 값이면 해제), Esc 취소
-        · 표시(목록/상세/검색)에만 적용되며 스캔은 항상 대역 전체를 대상으로 진행
-        · 필터는 설정 파일에 저장하지 않음 (실행할 때마다 해제 상태로 시작)
 
     주의: 관리자 권한이 필요하며, 부족하면 승격된 창으로 자동 재실행됩니다.
           PowerShell ISE 는 지원하지 않습니다.
@@ -31,7 +20,7 @@
 # 0) 환경 점검 : ISE 미지원 → 즉시 종료 (권한 확인보다 먼저)
 # ============================================================
 if ($Host.Name -match 'ISE') {
-    Write-Host 'NetScan v4 는 PowerShell ISE 를 지원하지 않습니다.' -ForegroundColor Red
+    Write-Host 'NetScan v0.3 는 PowerShell ISE 를 지원하지 않습니다.' -ForegroundColor Red
     Write-Host 'Windows Terminal, conhost 또는 pwsh 콘솔에서 실행하십시오.' -ForegroundColor Yellow
     return
 }
@@ -74,7 +63,7 @@ $script:OuiPath = Join-Path $script:ScriptDir 'oui.txt'
 # 검사 대상 TCP 포트와 간단한 서비스명 표(상세 화면 표기용)
 $script:TcpPorts = @(20, 21, 22, 23, 25, 53, 79, 80, 88, 110, 111, 119, 135, 139, 143, 179, 194,
     389, 443, 445, 465, 515, 587, 631, 636, 993, 995, 1080, 1433, 1521, 1723, 1883, 2049, 2181,
-    2375, 2376, 3000, 3128, 3268, 3306, 3389, 3392, 4369, 4444, 5000, 5060, 5061, 5222, 5432, 5601,
+    2375, 2376, 3000, 3128, 3268, 3306, 3389, 4369, 4444, 5000, 5060, 5061, 5222, 5432, 5601,
     5672, 5900, 5984, 6379, 6443, 8000, 8009, 8080, 8081, 8086, 8088, 8443, 8888, 9000, 9042,
     9092, 9200, 9300, 9418, 9999)
 
@@ -85,8 +74,8 @@ $script:ServiceNames = @{
     445 = 'microsoft-ds'; 465 = 'smtps'; 515 = 'printer'; 587 = 'submission'; 631 = 'ipp'
     636 = 'ldaps'; 993 = 'imaps'; 995 = 'pop3s'; 1080 = 'socks'; 1433 = 'mssql'; 1521 = 'oracle'
     1723 = 'pptp'; 1883 = 'mqtt'; 2049 = 'nfs'; 2181 = 'zookeeper'; 2375 = 'docker'; 2376 = 'docker-s'
-    3000 = 'http-alt'; 3128 = 'squid'; 3268 = 'globalcat'; 3306 = 'mysql'; 3389 = 'rdp'; 3392 = 'efi-lm';
-    4369 = 'epmd'; 4444 = 'krb-alt'; 5000 = 'upnp'; 5060 = 'sip'; 5061 = 'sips'; 5222 = 'xmpp'; 5432 = 'postgres'
+    3000 = 'http-alt'; 3128 = 'squid'; 3268 = 'globalcat'; 3306 = 'mysql'; 3389 = 'rdp'; 4369 = 'epmd'
+    4444 = 'krb-alt'; 5000 = 'upnp'; 5060 = 'sip'; 5061 = 'sips'; 5222 = 'xmpp'; 5432 = 'postgres'
     5601 = 'kibana'; 5672 = 'amqp'; 5900 = 'vnc'; 5984 = 'couchdb'; 6379 = 'redis'; 6443 = 'k8s-api'
     8000 = 'http-alt'; 8009 = 'ajp'; 8080 = 'http-proxy'; 8081 = 'http-alt'; 8086 = 'influxdb'
     8088 = 'http-alt'; 8443 = 'https-alt'; 8888 = 'http-alt'; 9000 = 'http-alt'; 9042 = 'cassandra'
@@ -514,9 +503,7 @@ function Invoke-HostProbe {
     # 5355 : LLMNR PTR
     #   RawUdp 모드는 멀티캐스트(224.0.0.252)로 질의하고 소유 호스트의 유니캐스트 응답을 받는다.
     #   응답이 오면 그 호스트에서 LLMNR 응답기가 동작 중(= 5355 열림)으로 본다.
-    #   ResolveDnsName 모드는 유니캐스트 프로브로 먼저 판정(open/closed/unknown)하고,
-    #   이름을 얻지 못하면 멀티캐스트로 한 번 더 질의한다. 응답이 오면 열림으로 보정한다.
-    #   (이름과 5355 판정이 항상 같은 LLMNR 프로토콜 응답에서 나오도록 보장)
+    #   ResolveDnsName 모드는 기존 유니캐스트 프로브를 유지한다.
     $rid = Get-Random -Minimum 1 -Maximum 65535
     $qll = New-DnsQueryPacket -QName $Reverse -QType 12 -Flags 0x0000 -QClass 1 -TxnId $rid
     if ($Engine -eq 'RawUdp') {
@@ -530,15 +517,6 @@ function Invoke-HostProbe {
         $rll = Invoke-UdpQuery -Address $IP -Port 5355 -Payload $qll -TimeoutMs $TimeoutMs
         $udp[5355] = $rll.Verdict
         if ($rll.Data) { $nm = Get-DnsPtrAnswer -Data $rll.Data; if ($nm) { $names.LLMNR = $nm } }
-        if (-not $names.LLMNR -and $udp[5355] -ne 'closed') {
-            $rid = Get-Random -Minimum 1 -Maximum 65535
-            $qllm = New-DnsQueryPacket -QName $Reverse -QType 12 -Flags 0x0000 -QClass 1 -TxnId $rid
-            $mll = Invoke-McastQuery -Group '224.0.0.252' -Port 5355 -Payload $qllm -ExpectIP $IP -LocalIP $LocalIP -TimeoutMs $TimeoutMs
-            if ($mll.Answered) {
-                $udp[5355] = 'open'
-                if ($mll.Data) { $nm = Get-DnsPtrAnswer -Data $mll.Data; if ($nm) { $names.LLMNR = $nm } }
-            }
-        }
     }
 
     # 5353 : mDNS PTR (QU 비트 set → 유니캐스트 응답 요청)
@@ -961,9 +939,13 @@ $worker = {
             if ($hit) { $names.DNS = ($hit.NameHost -replace '\.$', ''); $dnsVia = 'DNS' }
         }
         catch {}
-        # LLMNR : Resolve-DnsName -LlmnrOnly 는 사용하지 않는다.
-        #         (Windows 가 멀티캐스트 조회로 mDNS 도 함께 보내 mDNS 이름이 섞임)
-        #         이름은 Invoke-HostProbe 의 raw LLMNR 결과만 사용한다.
+        # LLMNR : Resolve-DnsName -LlmnrOnly, 실패 시 프로브 결과 유지
+        try {
+            $rec = Resolve-DnsName -Name $ip -LlmnrOnly -QuickTimeout -ErrorAction Stop
+            $hit = $rec | Where-Object { $_.NameHost } | Select-Object -First 1
+            if ($hit) { $names.LLMNR = ($hit.NameHost -replace '\.$', '') }
+        }
+        catch {}
         # NetBIOS : nbtstat, 실패 시 프로브 결과 유지
         if (-not $names.NetBIOS) {
             try {
@@ -1011,7 +993,7 @@ try {
         $AppState.FlushNow = $false
 
         $AppState.Cycle = [int]$AppState.Cycle + 1
-        $AppState.Phase = 'Ping Sweep'
+        $AppState.Phase = 'ARP 스윕'
         $AppState.Progress = 0
         $AppState.ProgressTotal = 0
 
@@ -1026,7 +1008,7 @@ try {
         }
 
         # 핑 스윕
-        $AppState.Phase = 'Ping Sweep'
+        $AppState.Phase = 'ARP 스윕'
         $known = @{}
         for ($r = 1; $r -le $rounds; $r++) {
             if ($AppState.Quit) { break }
@@ -1124,7 +1106,7 @@ catch {
 # 8) 렌더링 (메인 스레드)
 # ============================================================
 function Write-Line {
-    param([int]$Row, [string]$Text, [System.ConsoleColor]$Color = 'Gray', [System.ConsoleColor]$BackgroundColor = 'Black')
+    param([int]$Row, [string]$Text, [System.ConsoleColor]$Color = 'Gray')
     # 콘솔 크기 조정 중에는 Row 가 버퍼 범위를 벗어날 수 있으므로 방어한다.
     try {
         if ($Row -lt 0 -or $Row -ge [Console]::BufferHeight) { return }
@@ -1134,11 +1116,8 @@ function Write-Line {
         [Console]::SetCursorPosition(0, $Row)
         $prev = [Console]::ForegroundColor
         [Console]::ForegroundColor = $Color
-        $prevBg = [Console]::BackgroundColor
-        [Console]::BackgroundColor = $BackgroundColor
         [Console]::Write($disp)
         [Console]::ForegroundColor = $prev
-        [Console]::BackgroundColor = $prevBg
     }
     catch { }
 }
@@ -1195,54 +1174,14 @@ function Format-NameString {
 }
 
 function Get-SortedHostIps {
-    <#
-        화면 표시용 IP 목록 (정렬 + 필터 적용).
-        목록/상세/검색이 모두 이 목록을 기준으로 인덱스를 쓰므로 필터는 여기서 한 번만 적용한다.
-        -All 이면 필터를 무시한다.
-        주의: 결과가 1건이면 문자열 스칼라로 풀리므로 호출부에서 반드시 @( ) 로 감쌀 것.
-    #>
-    param($AppState, [switch]$All)
+    param($AppState)
     $ips = @(Get-HostKeysSnapshot -Hosts $AppState.Hosts)
-    $sorted = switch ($AppState.SortMode) {
-        'Name' { @($ips | Sort-Object { $h = $AppState.Hosts[$_]; Format-NameString -HostObj $h }) }
-        'Vendor' { @($ips | Sort-Object { $AppState.Hosts[$_].Vendor }) }
-        default { @($ips | Sort-Object { [uint64](ConvertTo-IPUInt $_) }) }
+    switch ($AppState.SortMode) {
+        'IP' { return @($ips | Sort-Object { [uint64](ConvertTo-IPUInt $_) }) }
+        'Name' { return @($ips | Sort-Object { $h = $AppState.Hosts[$_]; Format-NameString -HostObj $h }) }
+        'Vendor' { return @($ips | Sort-Object { $AppState.Hosts[$_].Vendor }) }
+        default { return @($ips | Sort-Object { [uint64](ConvertTo-IPUInt $_) }) }
     }
-    $sorted = @($sorted)
-    if ($All -or [string]::IsNullOrWhiteSpace($AppState.FilterQuery)) { return $sorted }
-    $filtered = New-Object System.Collections.Generic.List[string]
-    foreach ($ip in $sorted) {
-        if (Test-HostMatch -HostObj $AppState.Hosts[$ip] -Query $AppState.FilterQuery -ServiceNames $AppState.ServiceNames) {
-            $filtered.Add($ip)
-        }
-    }
-    return $filtered.ToArray()
-}
-
-function Get-CursorHostIp {
-    <# 현재 커서가 가리키는 호스트 IP (없으면 $null) #>
-    param($AppState)
-    $ips = @(Get-SortedHostIps -AppState $AppState)
-    $c = [int]$AppState.Cursor
-    if ($c -ge 0 -and $c -lt $ips.Count) { return $ips[$c] }
-    return $null
-}
-
-function Set-CursorToHostIp {
-    <# 지정 IP 가 현재(필터 적용) 목록에 있으면 그 위치로, 없으면 맨 위로 커서 이동 #>
-    param($AppState, [string]$Ip)
-    $ips = @(Get-SortedHostIps -AppState $AppState)
-    $idx = -1
-    if ($Ip) { $idx = [Array]::IndexOf([string[]]$ips, $Ip) }
-    $AppState.Cursor = if ($idx -ge 0) { $idx } else { 0 }
-    $AppState.ScrollTop = 0   # 렌더링 시 커서가 보이도록 다시 계산됨
-}
-
-function Update-FilterLive {
-    <# 필터 입력 중 : 입력값을 즉시 적용하고 기준 호스트에 커서 유지 #>
-    param($AppState)
-    $AppState.FilterQuery = $AppState.FilterBuffer.Trim()
-    Set-CursorToHostIp -AppState $AppState -Ip $AppState.FilterAnchorIp
 }
 
 function Format-Countdown {
@@ -1254,7 +1193,7 @@ function Format-Countdown {
 }
 
 function Show-Dashboard {
-    param($AppState, [ValidateSet('', 'search', 'filter')][string]$InputMode = '')
+    param($AppState)
     $width = [Console]::BufferWidth
     $height = [Math]::Min([Console]::WindowHeight, [Console]::BufferHeight)
 
@@ -1268,7 +1207,7 @@ function Show-Dashboard {
     if (($colName + $colMethodMax) -gt $flex -and $flex -gt 16) { $colMethodMax = $flex - $colName }
 
     $sel = $AppState.Selection
-    $header = ' NetScan v4   {0} ({1})   {2} ~ {3} (/{4}, {5} hosts)   엔진: {6}' -f `
+    $header = ' NetScan v0.3   {0} ({1})   {2} ~ {3} (/{4}, {5} hosts)   엔진: {6}' -f `
         $sel.AdapterName, $AppState.AdapterDesc, (ConvertFrom-IPUInt $AppState.Range.FirstHost),
     (ConvertFrom-IPUInt $AppState.Range.LastHost), $AppState.Range.PrefixLength,
     $AppState.Range.HostCount, $AppState.Config.Engine
@@ -1291,7 +1230,7 @@ function Show-Dashboard {
             $filled = [int]($ratio * 20)
             $bar = ('█' * $filled) + ('░' * (20 - $filled)) + (' {0}/{1}' -f $AppState.Progress, $AppState.ProgressTotal)
         }
-        elseif ($AppState.Phase -eq 'Ping Sweep') {
+        elseif ($AppState.Phase -eq 'ARP 스윕') {
             $bar = '스윕 {0}/{1}' -f $AppState.SweepRound, $AppState.SweepTotal
         }
         $statusLine = ' 사이클 #{0}  {1} {2}  [{3}]  {4}' -f $AppState.Cycle, $spin, '스캔 중', $AppState.Phase, $bar
@@ -1321,7 +1260,7 @@ function Show-Dashboard {
     $maxRows = $height - $topRow - $footRows
     if ($maxRows -lt 1) { $maxRows = 1 }
 
-    $ips = @(Get-SortedHostIps -AppState $AppState)
+    $ips = Get-SortedHostIps -AppState $AppState
     $total = $ips.Count
     if ($AppState.Cursor -ge $total) { $AppState.Cursor = [Math]::Max(0, $total - 1) }
     # 스크롤 오프셋
@@ -1336,7 +1275,7 @@ function Show-Dashboard {
         $h = $AppState.Hosts[$ip]
         if ($null -eq $h) { continue }
         $cursorMark = if ($idx -eq $AppState.Cursor) { '▶' } else { ' ' }
-        $stateMark = switch ($h.State) { 'new' { ' ● ' } 'changed' { ' ▲ ' } 'left' { ' ○ ' } default { '   ' } }
+        $stateMark = switch ($h.State) { 'new' { 'NEW' } 'changed' { ' ▲ ' } 'left' { 'OUT' } default { '   ' } }
         $tcpStr = if ($h.Tcp.Count -gt 0) { ($h.Tcp -join ',') } else { '-' }
         $method = Format-MethodString -HostObj $h -MaxWidth $colMethodMax
         $name = Format-NameString -HostObj $h
@@ -1347,20 +1286,13 @@ function Show-Dashboard {
         (Format-Cell $tcpStr $colTcp) + ' ' + (Format-Cell $h.Vendor $colVendor) + ' ' +
         (Format-Cell $h.MAC $colMac)
 
-        if ($idx -eq $AppState.Cursor) {
-            $color = [System.ConsoleColor]::Black
-            $bgColor = [System.ConsoleColor]::DarkCyan
+        $color = switch ($h.State) {
+            'new' { [System.ConsoleColor]::Green }
+            'changed' { [System.ConsoleColor]::Yellow }
+            'left' { [System.ConsoleColor]::DarkGray }
+            default { if ($idx -eq $AppState.Cursor) { [System.ConsoleColor]::White } else { [System.ConsoleColor]::Gray } }
         }
-        else {
-            $color = switch ($h.State) {
-                'new' { [System.ConsoleColor]::Green }
-                'changed' { [System.ConsoleColor]::Yellow }
-                'left' { [System.ConsoleColor]::DarkGray }
-                default { [System.ConsoleColor]::Gray }
-            }
-            $bgColor = [System.ConsoleColor]::Black
-        }
-        Write-Line -Row $row -Text $lineText -Color $color -BackgroundColor $bgColor
+        Write-Line -Row $row -Text $lineText -Color $color
         $row++
     }
     # 남은 줄 지우기
@@ -1369,185 +1301,16 @@ function Show-Dashboard {
     # 하단
     $footTop = $height - $footRows
     Write-Line -Row $footTop -Text ('─' * ($width - 1)) -Color DarkGray
-    $info = ' {0}    ({1}/{2} 표시)  (●: 신규, ▲: 갱신, ○: 이탈)   정렬: {3}' -f $AppState.OuiMessage, ([Math]::Min($maxRows, $total)), $total, $AppState.SortMode
-    if ($InputMode -ne 'filter' -and $AppState.FilterQuery) {
-        $info += ('   필터: "{0}" ({1}/{2})' -f $AppState.FilterQuery, $total, $AppState.Hosts.Count)
-    }
+    $info = ' {0}    ({1}/{2} 표시)   정렬: {3}' -f $AppState.OuiMessage, ([Math]::Min($maxRows, $total)), $total, $AppState.SortMode
     Write-Line -Row ($footTop + 1) -Text $info -Color DarkCyan
-    if ($InputMode -eq 'search') {
-        Show-SearchBar -AppState $AppState -Row ($footTop + 2) -Ips $ips
-    }
-    elseif ($InputMode -eq 'filter') {
-        Show-FilterBar -AppState $AppState -Row ($footTop + 2) -Ips $ips
-    }
-    else {
-        $keys = ' [F2]설정  [F3]검색  [F4]필터  [R]즉시 재스캔  [F5]ARP flush  [P]일시정지  [F6]정렬  [↑↓]이동  [Enter]상세  [F10]종료'
-        Write-Line -Row ($footTop + 2) -Text $keys -Color Gray
-    }
-}
-
-# ============================================================
-# 8-1) 검색 (F3) / 필터 (F4) 공용 일치 판정
-#      대상 : IP(부분 일치) / 이름(DNS·LLMNR·NetBIOS·mDNS 부분 일치)
-#             / MAC(구분자 무시) / 제조사(약칭·정식명)
-#             / TCP 포트(숫자는 포트 번호 정확 일치, 문자는 서비스명 부분 일치)
-#      대소문자 구분 없음.
-#      검색은 커서 이동으로, 필터는 목록 축소로 반영한다. 검색은 필터 결과 안에서만 수행.
-# ============================================================
-function Test-HostMatch {
-    param($HostObj, [string]$Query, $ServiceNames)
-    if ($null -eq $HostObj) { return $false }
-    $q = ([string]$Query).Trim().ToLowerInvariant()
-    if ($q.Length -eq 0) { return $false }
-
-    # IP
-    if ($HostObj.IP -and $HostObj.IP.Contains($q)) { return $true }
-
-    # 이름 (DNS / LLMNR / NetBIOS / mDNS)
-    if ($HostObj.Names) {
-        foreach ($nk in 'DNS', 'LLMNR', 'NetBIOS', 'mDNS') {
-            $nv = $HostObj.Names[$nk]
-            if ($nv -and ([string]$nv).ToLowerInvariant().Contains($q)) { return $true }
-        }
-    }
-
-    # MAC (':' '-' '.' 공백 무시)
-    $qHex = $q -replace '[:\-\.\s]', ''
-    if ($qHex.Length -gt 0 -and $HostObj.MAC) {
-        $macHex = ($HostObj.MAC -replace '[:\-]', '').ToLowerInvariant()
-        if ($macHex.Contains($qHex)) { return $true }
-    }
-
-    # 제조사
-    if ($HostObj.Vendor -and $HostObj.Vendor.ToLowerInvariant().Contains($q)) { return $true }
-    if ($HostObj.VendorFull -and $HostObj.VendorFull.ToLowerInvariant().Contains($q)) { return $true }
-
-    # TCP 포트
-    $tcp = @($HostObj.Tcp)
-    if ($tcp.Count -gt 0) {
-        if ($q -match '^\d+$') {
-            $num = 0
-            if ([int]::TryParse($q, [ref]$num) -and ($tcp -contains $num)) { return $true }
-        }
-        else {
-            foreach ($p in $tcp) {
-                if ($ServiceNames.ContainsKey([int]$p) -and $ServiceNames[[int]$p].ToLowerInvariant().Contains($q)) { return $true }
-            }
-        }
-    }
-    return $false
-}
-
-function Get-SearchMatchIndexes {
-    <# 정렬된 IP 목록 기준으로 일치하는 인덱스 목록을 반환 #>
-    param($AppState, [string]$Query, $Ips)
-    $result = New-Object System.Collections.Generic.List[int]
-    if ([string]::IsNullOrWhiteSpace($Query)) { return , $result }
-    for ($i = 0; $i -lt $Ips.Count; $i++) {
-        if (Test-HostMatch -HostObj $AppState.Hosts[$Ips[$i]] -Query $Query -ServiceNames $AppState.ServiceNames) {
-            $result.Add($i)
-        }
-    }
-    return , $result
-}
-
-function Find-SearchMatch {
-    <#
-        StartIndex 기준으로 다음(Direction=1) 또는 이전(Direction=-1) 일치 인덱스를 찾는다.
-        IncludeStart 이면 StartIndex 자체도 후보로 본다. 끝에 닿으면 반대쪽으로 순환.
-        일치 없음 : -1
-    #>
-    param($AppState, [string]$Query, [int]$StartIndex, [int]$Direction = 1, [switch]$IncludeStart)
-    $ips = @(Get-SortedHostIps -AppState $AppState)
-    $found = Get-SearchMatchIndexes -AppState $AppState -Query $Query -Ips $ips
-    if ($found.Count -eq 0) { return -1 }
-    if ($Direction -ge 0) {
-        foreach ($m in $found) {
-            if ($m -gt $StartIndex -or ($IncludeStart -and $m -eq $StartIndex)) { return $m }
-        }
-        return $found[0]
-    }
-    for ($k = $found.Count - 1; $k -ge 0; $k--) {
-        $m = $found[$k]
-        if ($m -lt $StartIndex -or ($IncludeStart -and $m -eq $StartIndex)) { return $m }
-    }
-    return $found[$found.Count - 1]
-}
-
-function Write-At {
-    <# 지정 열/행에 색상 문자열 출력 (화면 폭 초과분은 자름) #>
-    param([int]$Col, [int]$Row, [string]$Text, [System.ConsoleColor]$Color = 'Gray')
-    try {
-        if ($Row -lt 0 -or $Row -ge [Console]::BufferHeight) { return }
-        $avail = [Console]::BufferWidth - 1 - $Col
-        if ($avail -lt 1) { return }
-        if ((Get-DisplayWidth -Text $Text) -gt $avail) { $Text = Format-Cell -Text $Text -Width $avail }
-        [Console]::SetCursorPosition($Col, $Row)
-        $prev = [Console]::ForegroundColor
-        [Console]::ForegroundColor = $Color
-        [Console]::Write($Text)
-        [Console]::ForegroundColor = $prev
-    }
-    catch { }
-}
-
-function Show-SearchBar {
-    <# 하단 키 안내 줄 자리에 검색 입력창 + 일치 현황 표시 #>
-    param($AppState, [int]$Row, $Ips)
-    $found = Get-SearchMatchIndexes -AppState $AppState -Query $AppState.SearchBuffer -Ips $Ips
-    $left = ' 검색: {0}_   ' -f $AppState.SearchBuffer
-    if ([string]::IsNullOrWhiteSpace($AppState.SearchBuffer)) {
-        $status = '(IP / 이름 / MAC / 제조사 / TCP 포트)'
-        $statusColor = [System.ConsoleColor]::DarkGray
-    }
-    elseif ($found.Count -eq 0) {
-        $status = '일치 없음'
-        $statusColor = [System.ConsoleColor]::Red
-    }
-    else {
-        $pos = $found.IndexOf([int]$AppState.Cursor)
-        $posText = if ($pos -ge 0) { [string]($pos + 1) } else { '-' }
-        $status = '일치 {0}/{1}' -f $posText, $found.Count
-        $statusColor = [System.ConsoleColor]::Green
-    }
-    $hint = '   [F3/↓]다음  [Shift+F3/↑]이전  [Enter]확정  [Esc]취소'
-
-    Write-Line -Row $Row -Text ($left + $status + $hint) -Color White
-    $col = Get-DisplayWidth -Text $left
-    Write-At -Col $col -Row $Row -Text $status -Color $statusColor
-    Write-At -Col ($col + (Get-DisplayWidth -Text $status)) -Row $Row -Text $hint -Color DarkGray
-}
-
-function Show-FilterBar {
-    <# 하단 키 안내 줄 자리에 필터 입력창 + 표시 건수 #>
-    param($AppState, [int]$Row, $Ips)
-    $allCount = $AppState.Hosts.Count
-    $shown = @($Ips).Count
-    $left = ' 필터: {0}_   ' -f $AppState.FilterBuffer
-    if ([string]::IsNullOrWhiteSpace($AppState.FilterBuffer)) {
-        $status = '(IP / 이름 / MAC / 제조사 / TCP 포트)  전체 {0}' -f $allCount
-        $statusColor = [System.ConsoleColor]::DarkGray
-    }
-    elseif ($shown -eq 0) {
-        $status = '표시 0/{0}' -f $allCount
-        $statusColor = [System.ConsoleColor]::Red
-    }
-    else {
-        $status = '표시 {0}/{1}' -f $shown, $allCount
-        $statusColor = [System.ConsoleColor]::Green
-    }
-    $hint = '   [↑↓]이동  [Enter]적용(빈 값=해제)  [Esc]취소'
-
-    Write-Line -Row $Row -Text ($left + $status + $hint) -Color White
-    $col = Get-DisplayWidth -Text $left
-    Write-At -Col $col -Row $Row -Text $status -Color $statusColor
-    Write-At -Col ($col + (Get-DisplayWidth -Text $status)) -Row $Row -Text $hint -Color DarkGray
+    $keys = ' [S]설정  [P]일시정지  [R]즉시 재스캔  [F]ARP flush  [O]정렬  [↑↓]이동  [Enter]상세  [Q]종료'
+    Write-Line -Row ($footTop + 2) -Text $keys -Color Gray
 }
 
 function Show-Settings {
     param($AppState)
     $width = [Console]::BufferWidth
-    Write-Line -Row 0 -Text (' NetScan v4 ─ 설정                    저장 위치: scan_tool.config.json') -Color Cyan
+    Write-Line -Row 0 -Text (' NetScan v0.3 ─ 설정                    저장 위치: scan_tool.config.json') -Color Cyan
     Write-Line -Row 1 -Text ('─' * ($width - 1)) -Color DarkGray
 
     $rows = $AppState.SettingsRows
@@ -1579,14 +1342,14 @@ function Show-Settings {
     $height = [Math]::Min([Console]::WindowHeight, [Console]::BufferHeight)
     Write-Line -Row ($height - 3) -Text ('─' * ($width - 1)) -Color DarkGray
     Write-Line -Row ($height - 2) -Text (' 스캔은 백그라운드에서 계속 진행 중 (사이클 #{0})' -f $AppState.Cycle) -Color DarkCyan
-    Write-Line -Row ($height - 1) -Text ' [↑↓]이동  [←→]값 변경  [Enter]직접 입력/어댑터  [D]기본값  [F10]저장 후 닫기  [Esc]취소' -Color Gray
+    Write-Line -Row ($height - 1) -Text ' [↑↓]이동  [←→]값 변경  [Enter]직접 입력/어댑터  [D]기본값  [S]저장 후 닫기  [Esc]취소' -Color Gray
 }
 
 function Show-Detail {
     param($AppState)
     $width = [Console]::BufferWidth
     $h = $AppState.DetailHost
-    Write-Line -Row 0 -Text ' NetScan v4 ─ 호스트 상세                                        [Esc] 목록으로' -Color Cyan
+    Write-Line -Row 0 -Text ' NetScan v0.3 ─ 호스트 상세                                        [Esc] 목록으로' -Color Cyan
     Write-Line -Row 1 -Text ('─' * ($width - 1)) -Color DarkGray
     if ($null -eq $h) {
         Write-Line -Row 3 -Text '  (호스트 정보 없음)' -Color DarkGray
@@ -1714,14 +1477,6 @@ $appState = [hashtable]::Synchronized(@{
         SettingsCursor = 0
         EditConfigRef  = $null
         DetailHost     = $null
-        SearchQuery    = ''      # 마지막으로 확정한 검색어 (다음 검색 모드 진입 시 미리 채움)
-        SearchBuffer   = ''      # 검색창에서 편집 중인 검색어
-        SearchOrigin   = 0       # 검색창을 열 때의 커서 위치 (Esc 시 복원, incremental 기준점)
-        FilterQuery    = ''      # 현재 적용 중인 필터 (저장하지 않음)
-        FilterBuffer   = ''      # 필터창에서 편집 중인 값
-        FilterOrigin   = ''      # 필터창을 열 때의 필터 (Esc 시 복원)
-        FilterEnterIp  = $null   # 필터창을 열 때 커서가 있던 호스트 (Esc 시 복원)
-        FilterAnchorIp = $null   # 필터 변경 시 커서를 유지할 기준 호스트
     })
 
 # ============================================================
@@ -1739,7 +1494,7 @@ $loopHandle = $loopShell.BeginInvoke()
 # ============================================================
 # 11) 메인 입력/렌더 루프
 # ============================================================
-$screen = 'dashboard'   # dashboard | settings | detail | search | filter
+$screen = 'dashboard'   # dashboard | settings | detail
 [Console]::CursorVisible = $false
 Clear-Host
 
@@ -1789,8 +1544,6 @@ try {
 
         switch ($screen) {
             'dashboard' { Show-Dashboard -AppState $appState }
-            'search' { Show-Dashboard -AppState $appState -InputMode 'search' }
-            'filter' { Show-Dashboard -AppState $appState -InputMode 'filter' }
             'settings' { Show-Settings -AppState $appState }
             'detail' { Show-Detail -AppState $appState }
         }
@@ -1808,37 +1561,17 @@ try {
         if ($screen -eq 'dashboard') {
             switch ($key.Key) {
                 'Q' { $appState.Quit = $true }
-                'F10' { $appState.Quit = $true }
-                'F2' { Enter-Settings -AppState $appState; $screen = 'settings'; Clear-Host }
+                'S' { Enter-Settings -AppState $appState; $screen = 'settings'; Clear-Host }
                 'P' { $appState.Paused = -not $appState.Paused }
                 'R' { $appState.RescanNow = $true }
-                'F5' { $appState.FlushNow = $true; $appState.RescanNow = $true }
-                'F3' {
-                    # 검색 모드 진입만 수행 (Shift+F3 는 대시보드에서 무시)
-                    #   다음/이전 이동은 검색 모드에서만 허용한다.
-                    $isShift = ($key.Modifiers -band [ConsoleModifiers]::Shift) -ne 0
-                    if (-not $isShift) {
-                        $appState.SearchBuffer = $appState.SearchQuery   # 직전 검색어 미리 채움
-                        $appState.SearchOrigin = [int]$appState.Cursor
-                        $screen = 'search'
-                    }
-                }
-                'F4' {
-                    # 필터 모드 진입 (현재 필터 값을 미리 채움)
-                    $curIp = Get-CursorHostIp -AppState $appState
-                    $appState.FilterBuffer = $appState.FilterQuery
-                    $appState.FilterOrigin = $appState.FilterQuery
-                    $appState.FilterEnterIp = $curIp
-                    $appState.FilterAnchorIp = $curIp
-                    $screen = 'filter'
-                }
-                'F6' {
+                'F' { $appState.FlushNow = $true; $appState.RescanNow = $true }
+                'O' {
                     $appState.SortMode = switch ($appState.SortMode) { 'IP' { 'Name' } 'Name' { 'Vendor' } default { 'IP' } }
                 }
                 'UpArrow' { if ($appState.Cursor -gt 0) { $appState.Cursor = [int]$appState.Cursor - 1 } }
                 'DownArrow' { $appState.Cursor = [int]$appState.Cursor + 1 }
                 'Enter' {
-                    $ips = @(Get-SortedHostIps -AppState $appState)
+                    $ips = Get-SortedHostIps -AppState $appState
                     if ($appState.Cursor -lt $ips.Count) {
                         $appState.DetailHost = $appState.Hosts[$ips[$appState.Cursor]]
                         $screen = 'detail'; Clear-Host
@@ -1849,7 +1582,6 @@ try {
         elseif ($screen -eq 'settings') {
             switch ($key.Key) {
                 'Escape' { $screen = 'dashboard'; Clear-Host }
-                'Q' { $screen = 'dashboard'; Clear-Host }
                 'UpArrow' { if ($appState.SettingsCursor -gt 0) { $appState.SettingsCursor-- } }
                 'DownArrow' { if ($appState.SettingsCursor -lt $appState.SettingsRows.Count - 1) { $appState.SettingsCursor++ } }
                 'LeftArrow' { Step-SettingValue -AppState $appState -Direction -1 }
@@ -1902,7 +1634,7 @@ try {
                         Clear-Host   # Read-Host 로 인한 버퍼 스크롤 보정
                     }
                 }
-                'F10' {
+                'S' {
                     # 편집값을 실제 설정으로 반영 + 저장
                     foreach ($p in $appState.EditConfig.PSObject.Properties.Name) {
                         $appState.Config.$p = $appState.EditConfig.$p
@@ -1912,95 +1644,10 @@ try {
                 }
             }
         }
-        elseif ($screen -eq 'search') {
-            $isShift = ($key.Modifiers -band [ConsoleModifiers]::Shift) -ne 0
-            $direction = 0
-            switch ($key.Key) {
-                'Escape' {
-                    # 취소 : 커서 원위치, 검색어는 확정하지 않음
-                    $appState.Cursor = [int]$appState.SearchOrigin
-                    $screen = 'dashboard'
-                }
-                'Enter' {
-                    $appState.SearchQuery = $appState.SearchBuffer.Trim()
-                    $screen = 'dashboard'
-                }
-                'F3' { $direction = if ($isShift) { -1 } else { 1 } }
-                'DownArrow' { $direction = 1 }
-                'UpArrow' { $direction = -1 }
-                'Backspace' {
-                    if ($appState.SearchBuffer.Length -gt 0) {
-                        $appState.SearchBuffer = $appState.SearchBuffer.Substring(0, $appState.SearchBuffer.Length - 1)
-                        if ($appState.SearchBuffer.Trim().Length -eq 0) {
-                            $appState.Cursor = [int]$appState.SearchOrigin
-                        }
-                        else {
-                            $m = Find-SearchMatch -AppState $appState -Query $appState.SearchBuffer -StartIndex ([int]$appState.SearchOrigin) -Direction 1 -IncludeStart
-                            if ($m -ge 0) { $appState.Cursor = $m }
-                        }
-                    }
-                }
-                default {
-                    # 출력 가능한 ASCII 문자만 입력 (한글 IME 조합 입력은 지원하지 않음)
-                    $ch = $key.KeyChar
-                    $code = [int]$ch
-                    if ($code -ge 0x20 -and $code -le 0x7E -and $appState.SearchBuffer.Length -lt 40) {
-                        $appState.SearchBuffer += $ch
-                        $m = Find-SearchMatch -AppState $appState -Query $appState.SearchBuffer -StartIndex ([int]$appState.SearchOrigin) -Direction 1 -IncludeStart
-                        if ($m -ge 0) { $appState.Cursor = $m }
-                    }
-                }
-            }
-            if ($direction -ne 0 -and -not [string]::IsNullOrWhiteSpace($appState.SearchBuffer)) {
-                $m = Find-SearchMatch -AppState $appState -Query $appState.SearchBuffer -StartIndex ([int]$appState.Cursor) -Direction $direction
-                if ($m -ge 0) { $appState.Cursor = $m }
-            }
-        }
-        elseif ($screen -eq 'filter') {
-            switch ($key.Key) {
-                'Escape' {
-                    # 취소 : 필터 원복, 커서도 진입 시 호스트로
-                    $appState.FilterQuery = $appState.FilterOrigin
-                    Set-CursorToHostIp -AppState $appState -Ip $appState.FilterEnterIp
-                    $screen = 'dashboard'
-                }
-                'Enter' {
-                    # 적용 (빈 값이면 필터 해제)
-                    $appState.FilterAnchorIp = Get-CursorHostIp -AppState $appState
-                    $appState.FilterBuffer = $appState.FilterBuffer.Trim()
-                    Update-FilterLive -AppState $appState
-                    $screen = 'dashboard'
-                }
-                'UpArrow' {
-                    if ($appState.Cursor -gt 0) { $appState.Cursor = [int]$appState.Cursor - 1 }
-                    $appState.FilterAnchorIp = Get-CursorHostIp -AppState $appState
-                }
-                'DownArrow' {
-                    $cnt = @(Get-SortedHostIps -AppState $appState).Count
-                    if ($appState.Cursor -lt $cnt - 1) { $appState.Cursor = [int]$appState.Cursor + 1 }
-                    $appState.FilterAnchorIp = Get-CursorHostIp -AppState $appState
-                }
-                'Backspace' {
-                    if ($appState.FilterBuffer.Length -gt 0) {
-                        $appState.FilterBuffer = $appState.FilterBuffer.Substring(0, $appState.FilterBuffer.Length - 1)
-                        Update-FilterLive -AppState $appState
-                    }
-                }
-                default {
-                    # 출력 가능한 ASCII 문자만 입력 (한글 IME 조합 입력은 지원하지 않음)
-                    $ch = $key.KeyChar
-                    $code = [int]$ch
-                    if ($code -ge 0x20 -and $code -le 0x7E -and $appState.FilterBuffer.Length -lt 40) {
-                        $appState.FilterBuffer += $ch
-                        Update-FilterLive -AppState $appState
-                    }
-                }
-            }
-        }
         elseif ($screen -eq 'detail') {
             switch ($key.Key) {
                 'Escape' { $screen = 'dashboard'; Clear-Host }
-                'Q' { $screen = 'dashboard'; Clear-Host }
+                'Q' { $appState.Quit = $true }
             }
         }
     }
@@ -2012,7 +1659,7 @@ finally {
     try { $loopRunspace.Dispose() } catch {}
     [Console]::CursorVisible = $true
     Clear-Host
-    Write-Host 'NetScan v4 를 종료했습니다.' -ForegroundColor Cyan
+    Write-Host 'NetScan v0.3 를 종료했습니다.' -ForegroundColor Cyan
     if ($appState.WorkerError) {
         Write-Host ('워커 오류: {0}' -f $appState.WorkerError) -ForegroundColor DarkYellow
     }

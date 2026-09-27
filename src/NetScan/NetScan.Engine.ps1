@@ -1,5 +1,5 @@
 ﻿<#
-    NetScan v4 - 실시간 네트워크 스캐너 (대시보드형)
+    NetScan v0.4 - 실시간 네트워크 스캐너 (대시보드형)
     NetScan 모듈 엔진 : Start-NetScan (별칭 netscan) 이 이 파일을 실행한다.
     ------------------------------------------------------------
     - 선택한 어댑터/대역을 주기적으로 반복 스캔하여 htop 형태로 실시간 표시
@@ -13,8 +13,10 @@
             mDNS 응답(xxx.local)이 LLMNR 이름으로 잘못 표기되는 문제가 있었다.
     - UDP 포트(53/137/5355/5353) 개방 여부는 항상 raw UDP 프로브로 판정
     - MAC 제조사는 모듈 폴더의 oui.txt 로 조회 (OUI|약칭|정식명)
-    - 설정값은 %ProgramData%\NetScan\scan_tool.config.json 에 저장되어 다음 실행 때 복원
-        · 모듈 설치 폴더(Program Files)는 쓰기 대상이 아니므로 설정은 ProgramData 에 둔다.
+    - 설정값은 scan_tool.config.json 에 저장되어 다음 실행 때 복원
+        · 설치판 : %ProgramData%\NetScan\scan_tool.config.json
+                   (모듈 설치 폴더(Program Files)는 쓰기 대상이 아니므로 ProgramData 에 둔다)
+        · 포터블 : 이 파일과 같은 폴더에 portable.flag 가 있으면 같은 폴더에 저장
     - 키보드 전용 UI (마우스 이벤트 없음)
     - [F3] 검색 : IP / 이름 / MAC / 제조사 / TCP 포트(번호·서비스명) 로 일치 호스트에 커서 이동
         · 입력 즉시 이동(incremental), F3·↓ 다음 / Shift+F3·↑ 이전, Enter 확정, Esc 취소
@@ -24,6 +26,11 @@
         · 입력 즉시 목록 반영(incremental), ↑↓ 이동, Enter 적용(빈 값이면 해제), Esc 취소
         · 표시(목록/상세/검색)에만 적용되며 스캔은 항상 대역 전체를 대상으로 진행
         · 필터는 설정 파일에 저장하지 않음 (실행할 때마다 해제 상태로 시작)
+    - 콘솔 호환 (conhost / Windows Terminal)
+        · 애매한 폭(East Asian Ambiguous) 기호(─ ▶ ● ↑ … 등)의 실제 표시폭을 시작 시 실측하여 계산
+          (conhost + 한글 글꼴은 2칸, Windows Terminal 은 1칸으로 그리는 차이 보정)
+          실측 불가 시 WT_SESSION 유무로 판단, 환경변수 NETSCAN_AMBIGUOUS=wide|narrow 로 강제 지정 가능
+        · conhost 는 실행 중 버퍼 높이를 창 높이에 맞춰 화면 스크롤(흔들림)을 차단, 종료 시 원복
 
     주의: 관리자 권한이 필요하며, 부족하면 승격된 창으로 자동 재실행됩니다.
           PowerShell ISE 는 지원하지 않습니다.
@@ -33,7 +40,7 @@
 # 0) 환경 점검 : ISE 미지원 → 즉시 종료 (권한 확인보다 먼저)
 # ============================================================
 if ($Host.Name -match 'ISE') {
-    Write-Host 'NetScan v4 는 PowerShell ISE 를 지원하지 않습니다.' -ForegroundColor Red
+    Write-Host 'NetScan v0.4 는 PowerShell ISE 를 지원하지 않습니다.' -ForegroundColor Red
     Write-Host 'Windows Terminal, conhost 또는 pwsh 콘솔에서 실행하십시오.' -ForegroundColor Yellow
     return
 }
@@ -71,7 +78,9 @@ if (-not (Test-Administrator)) {
 # 2) 경로 / 기본 설정 / 설정 파일 로드·저장
 # ============================================================
 $script:ScriptDir = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $MyInvocation.MyCommand.Path }
-$script:ConfigDir = Join-Path $env:ProgramData 'NetScan'
+# 포터블 배포본은 빌드 시 portable.flag 를 넣어 주므로, 있으면 설정을 엔진 폴더에 둔다.
+$script:IsPortable = Test-Path -LiteralPath (Join-Path $script:ScriptDir 'portable.flag')
+$script:ConfigDir = if ($script:IsPortable) { $script:ScriptDir } else { Join-Path $env:ProgramData 'NetScan' }
 $script:ConfigPath = Join-Path $script:ConfigDir 'scan_tool.config.json'
 $script:OuiPath = Join-Path $script:ScriptDir 'oui.txt'
 
@@ -170,10 +179,38 @@ function Export-ScanConfig {
 # ============================================================
 $script:SharedFunctions = @'
 # ---- 콘솔 표시폭 유틸 (동아시아 문자는 2칸으로 계산) ----
+# 애매한 폭 문자 처리 상태 (메인 세션에서 Initialize-CharWidthMap 으로 설정)
+#   CharWidthMap  : 실측한 문자별 폭 @{ [int]코드 = 1|2 } (우선 적용)
+#   AmbiguousWide : 실측하지 않은 애매한 폭 문자를 2칸으로 볼지 여부
+if ($null -eq $script:CharWidthMap) { $script:CharWidthMap = @{} }
+if ($null -eq $script:AmbiguousWide) { $script:AmbiguousWide = $false }
+
+function Test-AmbiguousWidthChar {
+    <# 유니코드 East Asian Width = A(Ambiguous) 주요 구간 여부 #>
+    param([int] $Code)
+    if ($Code -lt 0xA1) { return $false }
+    return (
+        ($Code -in 0xA7, 0xA8, 0xB0, 0xB1, 0xB4, 0xB6, 0xB7, 0xD7, 0xF7) -or
+        ($Code -ge 0x2010 -and $Code -le 0x2027) -or   # 대시·따옴표·글머리·… 
+        ($Code -ge 0x2030 -and $Code -le 0x203B) -or   # ‰ ′ ″ ※ 등
+        ($Code -ge 0x2190 -and $Code -le 0x21FF) -or   # 화살표
+        ($Code -ge 0x2460 -and $Code -le 0x24FF) -or   # 원 문자
+        ($Code -ge 0x2500 -and $Code -le 0x257F) -or   # 상자 그리기
+        ($Code -ge 0x2580 -and $Code -le 0x258F) -or   # 블록 요소
+        ($Code -ge 0x2592 -and $Code -le 0x2595) -or
+        ($Code -ge 0x25A0 -and $Code -le 0x25FF) -or   # 도형 ■ ▲ ▶ ● ○
+        ($Code -in 0x2605, 0x2606, 0x2609, 0x260E, 0x260F, 0x261C, 0x261E, 0x2640, 0x2642) -or
+        ($Code -ge 0x2660 -and $Code -le 0x266F)       # ♠ ♥ ♪ 등
+    )
+}
+
 function Get-CharWidth {
     param([Parameter(Mandatory)][char] $Char)
     $code = [int]$Char
     if ($code -eq 0) { return 0 }
+    if ($code -lt 0x80) { return 1 }   # ASCII 빠른 경로
+    # 실측값 우선
+    if ($script:CharWidthMap.ContainsKey($code)) { return $script:CharWidthMap[$code] }
     # East Asian Wide / Fullwidth 주요 구간
     if (
         ($code -ge 0x1100 -and $code -le 0x115F) -or   # Hangul Jamo
@@ -188,6 +225,8 @@ function Get-CharWidth {
         ($code -ge 0xFF00 -and $code -le 0xFF60) -or   # Fullwidth Forms
         ($code -ge 0xFFE0 -and $code -le 0xFFE6)
     ) { return 2 }
+    # 애매한 폭 : 콘솔이 넓게 그리는 환경이면 2칸
+    if ($script:AmbiguousWide -and (Test-AmbiguousWidthChar -Code $code)) { return 2 }
     return 1
 }
 
@@ -212,14 +251,18 @@ function Format-Cell {
         # 폭에 맞게 자르고 마지막에 … (…는 1칸)
         $sb = New-Object System.Text.StringBuilder
         $acc = 0
+        # … 자체도 애매한 폭 문자이므로 콘솔에 따라 1칸 또는 2칸
+        $ell = [char]0x2026
+        $ew = Get-CharWidth -Char $ell
+        if ($ew -gt $Width) { $ell = '.'; $ew = 1 }
         foreach ($ch in $Text.ToCharArray()) {
             $cw = Get-CharWidth -Char $ch
-            if ($acc + $cw -gt ($Width - 1)) { break }
+            if ($acc + $cw -gt ($Width - $ew)) { break }
             [void]$sb.Append($ch)
             $acc += $cw
         }
-        [void]$sb.Append([char]0x2026)   # …
-        $acc += 1
+        [void]$sb.Append($ell)
+        $acc += $ew
         $text2 = $sb.ToString()
         $pad = $Width - $acc
         if ($pad -lt 0) { $pad = 0 }
@@ -1275,7 +1318,7 @@ function Show-Dashboard {
     if (($colName + $colMethodMax) -gt $flex -and $flex -gt 16) { $colMethodMax = $flex - $colName }
 
     $sel = $AppState.Selection
-    $header = ' NetScan v4   {0} ({1})   {2} ~ {3} (/{4}, {5} hosts)   엔진: {6}' -f `
+    $header = ' NetScan v0.4   {0} ({1})   {2} ~ {3} (/{4}, {5} hosts)   엔진: {6}' -f `
         $sel.AdapterName, $AppState.AdapterDesc, (ConvertFrom-IPUInt $AppState.Range.FirstHost),
     (ConvertFrom-IPUInt $AppState.Range.LastHost), $AppState.Range.PrefixLength,
     $AppState.Range.HostCount, $AppState.Config.Engine
@@ -1554,7 +1597,7 @@ function Show-FilterBar {
 function Show-Settings {
     param($AppState)
     $width = [Console]::BufferWidth
-    Write-Line -Row 0 -Text (' NetScan v4 ─ 설정          저장 위치: %ProgramData%\NetScan\scan_tool.config.json') -Color Cyan
+    Write-Line -Row 0 -Text (' NetScan v0.4 ─ 설정          저장 위치: {0}' -f $script:ConfigPath) -Color Cyan
     Write-Line -Row 1 -Text ('─' * ($width - 1)) -Color DarkGray
 
     $rows = $AppState.SettingsRows
@@ -1593,7 +1636,7 @@ function Show-Detail {
     param($AppState)
     $width = [Console]::BufferWidth
     $h = $AppState.DetailHost
-    Write-Line -Row 0 -Text ' NetScan v4 ─ 호스트 상세                                        [Esc] 목록으로' -Color Cyan
+    Write-Line -Row 0 -Text ' NetScan v0.4 ─ 호스트 상세                                        [Esc] 목록으로' -Color Cyan
     Write-Line -Row 1 -Text ('─' * ($width - 1)) -Color DarkGray
     if ($null -eq $h) {
         Write-Line -Row 3 -Text '  (호스트 정보 없음)' -Color DarkGray
@@ -1654,9 +1697,98 @@ function Get-UdpVerdictText {
 }
 
 # ============================================================
+# 8-2) 콘솔 호환 : 애매한 폭 실측 / conhost 버퍼 고정
+# ============================================================
+function Initialize-CharWidthMap {
+    <#
+        UI 에 쓰는 애매한 폭 기호를 실제 콘솔에 출력해 커서 이동량으로 표시폭을 실측한다.
+        - conhost + 한글 글꼴 : 2칸, Windows Terminal : 1칸 (환경마다 다르므로 추정 대신 실측)
+        - 실측 불가(출력 리디렉션 등) 시 WT_SESSION 이 없으면 conhost 로 보고 2칸 처리
+        - 환경변수 NETSCAN_AMBIGUOUS = wide | narrow 로 강제 지정 가능
+    #>
+    $probe = '·—…←↑→↓─█░■▲▶◀○●'
+    $map = @{}
+    $wideCount = 0
+    $measured = $false
+    try {
+        if (-not [Console]::IsOutputRedirected) {
+            $row = [Console]::CursorTop
+            foreach ($ch in $probe.ToCharArray()) {
+                [Console]::SetCursorPosition(0, $row)
+                [Console]::Write($ch)
+                $w = [Console]::CursorLeft
+                if ($w -lt 1 -or $w -gt 2) { $w = 1 }
+                $map[[int]$ch] = $w
+                if ($w -eq 2) { $wideCount++ }
+            }
+            [Console]::SetCursorPosition(0, $row)
+            [Console]::Write('    ')
+            [Console]::SetCursorPosition(0, $row)
+            $measured = $true
+        }
+    }
+    catch { $measured = $false }
+
+    if ($measured) {
+        $script:CharWidthMap = $map
+        $script:AmbiguousWide = ($wideCount -gt 0)
+        $script:CharWidthSource = '실측'
+    }
+    else {
+        $script:CharWidthMap = @{}
+        $script:AmbiguousWide = [string]::IsNullOrEmpty($env:WT_SESSION)
+        $script:CharWidthSource = '추정'
+    }
+
+    switch ($env:NETSCAN_AMBIGUOUS) {
+        'wide' {
+            $script:CharWidthMap = @{}
+            $script:AmbiguousWide = $true
+            $script:CharWidthSource = '강제(wide)'
+        }
+        'narrow' {
+            $script:CharWidthMap = @{}
+            $script:AmbiguousWide = $false
+            $script:CharWidthSource = '강제(narrow)'
+        }
+    }
+}
+
+function Enter-FixedConsoleBuffer {
+    <#
+        conhost 는 버퍼(기본 9001줄)가 창보다 커서, 마지막 줄에서 한 칸이라도 넘치면
+        창이 스크롤되어 절대 좌표로 그리는 대시보드가 한 줄씩 어긋난다.
+        실행 중에는 버퍼를 창 크기와 같게 맞춰 스크롤 여지를 없앤다. (원래 크기는 보관)
+        Windows Terminal 은 버퍼 = 창 크기이므로 아무 것도 하지 않는다.
+    #>
+    try {
+        $bw = [Console]::BufferWidth; $bh = [Console]::BufferHeight
+        $ww = [Console]::WindowWidth; $wh = [Console]::WindowHeight
+        if ($bh -eq $wh -and $bw -eq $ww) { return }
+        if ($null -eq $script:OrigBufferSize) { $script:OrigBufferSize = @{ Width = $bw; Height = $bh } }
+        [Console]::SetWindowPosition(0, 0)
+        [Console]::SetBufferSize($ww, $wh)
+    }
+    catch { }
+}
+
+function Exit-FixedConsoleBuffer {
+    <# Enter-FixedConsoleBuffer 로 바꾼 버퍼 크기 원복 #>
+    if ($null -eq $script:OrigBufferSize) { return }
+    try {
+        $w = [Math]::Max([int]$script:OrigBufferSize.Width, [Console]::WindowWidth)
+        $h = [Math]::Max([int]$script:OrigBufferSize.Height, [Console]::WindowHeight)
+        [Console]::SetBufferSize($w, $h)
+    }
+    catch { }
+    $script:OrigBufferSize = $null
+}
+
+# ============================================================
 # 9) 시작 : 설정/OUI 로드, 어댑터 선택, 상태 초기화
 # ============================================================
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+Initialize-CharWidthMap
 $config = Import-ScanConfig
 $oui = Import-OuiTables
 
@@ -1748,6 +1880,7 @@ $loopHandle = $loopShell.BeginInvoke()
 # ============================================================
 $screen = 'dashboard'   # dashboard | settings | detail | search | filter
 [Console]::CursorVisible = $false
+Enter-FixedConsoleBuffer
 Clear-Host
 
 function Enter-Settings {
@@ -1788,11 +1921,17 @@ try {
         $appState.SpinIndex = [int]$appState.SpinIndex + 1
 
         # 콘솔 크기 변경 감지 시 화면을 정리해 잔상/좌표 어긋남을 방지
-        $curW = [Console]::BufferWidth; $curH = [Console]::WindowHeight
+        $curW = [Console]::WindowWidth; $curH = [Console]::WindowHeight
         if ($curW -ne $script:LastW -or $curH -ne $script:LastH) {
             $script:LastW = $curW; $script:LastH = $curH
+            Enter-FixedConsoleBuffer   # 창 크기가 바뀌면 버퍼를 다시 창 크기에 맞춤
             try { Clear-Host } catch { }
         }
+        # 창이 스크롤되어 있으면 맨 위로 되돌림 (좌표 어긋남 방지 안전장치)
+        try {
+            if ([Console]::WindowTop -ne 0 -or [Console]::WindowLeft -ne 0) { [Console]::SetWindowPosition(0, 0) }
+        }
+        catch { }
 
         switch ($screen) {
             'dashboard' { Show-Dashboard -AppState $appState }
@@ -1871,6 +2010,7 @@ try {
                     $item = $appState.SettingsRows[$appState.SettingsCursor]
                     if ($item.Type -eq 'adapter') {
                         # 어댑터 재선택
+                        Exit-FixedConsoleBuffer   # 어댑터 목록이 길면 스크롤이 필요하므로 일시 해제
                         $items2 = Get-AdapterMenuItems
                         $si = Find-SavedSelectionIndex -Items $items2 -AdapterName $appState.Selection.AdapterName -IP $appState.Selection.IPAddress
                         if ($si -lt 0) { $si = 0 }
@@ -1889,6 +2029,7 @@ try {
                             $appState.FlushNow = $true
                             $appState.RescanNow = $true
                         }
+                        Enter-FixedConsoleBuffer
                         Clear-Host
                     }
                     elseif ($item.Type -eq 'number') {
@@ -2018,8 +2159,9 @@ finally {
     try { $loopShell.Dispose() } catch {}
     try { $loopRunspace.Dispose() } catch {}
     [Console]::CursorVisible = $true
+    Exit-FixedConsoleBuffer
     Clear-Host
-    Write-Host 'NetScan v4 를 종료했습니다.' -ForegroundColor Cyan
+    Write-Host 'NetScan v0.4 를 종료했습니다.' -ForegroundColor Cyan
     if ($appState.WorkerError) {
         Write-Host ('워커 오류: {0}' -f $appState.WorkerError) -ForegroundColor DarkYellow
     }
