@@ -2,7 +2,7 @@
     NetScan 시스템 설치판(setup.exe) 빌드
     ------------------------------------------------------------
     - NetScan\NetScan.psd1 의 ModuleVersion 을 읽어 Inno Setup 컴파일러(ISCC.exe)에 넘긴다.
-      → dist\NetScan-Setup-<버전>.exe
+      → dist\NetScan-<버전>-setup.exe
     - 버전은 psd1 한 곳에서만 관리한다 (NetScan.iss 에는 기본값만 있음).
     - ISCC.exe 탐색 순서
         1) -IsccPath 인수
@@ -89,5 +89,5 @@ if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
 }
 
-$setupPath = Join-Path $distDir ('NetScan-Setup-{0}.exe' -f $version)
+$setupPath = Join-Path $distDir ('NetScan-{0}-setup.exe' -f $version)
 Write-Host ('생성 완료: {0}' -f $setupPath) -ForegroundColor Green

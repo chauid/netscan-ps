@@ -191,7 +191,7 @@ function Test-AmbiguousWidthChar {
     if ($Code -lt 0xA1) { return $false }
     return (
         ($Code -in 0xA7, 0xA8, 0xB0, 0xB1, 0xB4, 0xB6, 0xB7, 0xD7, 0xF7) -or
-        ($Code -ge 0x2010 -and $Code -le 0x2027) -or   # 대시·따옴표·글머리·… 
+        ($Code -ge 0x2010 -and $Code -le 0x2027) -or   # 대시·따옴표·글머리·…
         ($Code -ge 0x2030 -and $Code -le 0x203B) -or   # ‰ ′ ″ ※ 등
         ($Code -ge 0x2190 -and $Code -le 0x21FF) -or   # 화살표
         ($Code -ge 0x2460 -and $Code -le 0x24FF) -or   # 원 문자
@@ -528,7 +528,7 @@ function Get-NbstatNames {
         if ($pos + 18 -gt $Data.Length) { break }
         $nameRaw = [System.Text.Encoding]::ASCII.GetString($Data, $pos, 15).TrimEnd(' ', [char]0)
         $suffix = $Data[$pos + 15]
-        $flags = ($Data[$pos + 16] -shl 8) -bor $Data[$pos + 17]
+        $flags = ([int]$Data[$pos + 16] -shl 8) -bor $Data[$pos + 17]
         $isGroup = ($flags -band 0x8000) -ne 0
         if ($suffix -eq 0x00) {
             if ($isGroup) { if (-not $group) { $group = $nameRaw } }
